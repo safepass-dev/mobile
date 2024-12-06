@@ -1,10 +1,43 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, StyleSheet, Image } from "react-native";
 import { TextInput, Button, Text } from "react-native-paper";
 import { useNavigation } from "@react-navigation/native";
 
 const LoginScreen = () => {
   const navigation = useNavigation();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("")
+
+  const handleLogin = async () => {
+    try {
+      const master_password_hash = await create_master_password_hash(password, email)
+      const requestData = {
+          email: email,
+          master_password_hash: master_password_hash
+      }
+
+      const response = await fetch(`${API_URL}/api/v1/login`, {
+          method: "POST",
+          body: JSON.stringify(requestData)
+      });
+      
+      const data = await response.json()
+
+      if (!response.ok) {
+          // if register is unsuccess
+
+          return
+      }
+
+      // save data.data.token and data.data.user_id to database
+
+
+    } catch (error) {
+        // if an error occurs during password hashing
+    }
+  }
+
   const handleSignUpRedirect = () => {
     navigation.navigate("Register");
   }
@@ -26,6 +59,8 @@ const LoginScreen = () => {
       <TextInput
         mode="outlined"
         label="Email"
+        value={email}
+        onChangeText={setEmail}
         placeholder="Enter your email"
         style={styles.input}
         left={<TextInput.Icon icon="email" />}
@@ -35,6 +70,8 @@ const LoginScreen = () => {
         label="Password"
         placeholder="Enter your password"
         secureTextEntry
+        value={password}
+        onChangeText={setPassword}
         style={styles.input}
         left={<TextInput.Icon icon="lock" />}
         right={<TextInput.Icon icon="eye-off" />}
@@ -44,7 +81,7 @@ const LoginScreen = () => {
       <Text style={styles.forgotPassword}>Forgot Password?</Text>
 
       {/* Giriş Yap Butonu */}
-      <Button mode="contained" style={styles.loginButton}>
+      <Button mode="contained" style={styles.loginButton} onPress={handleLogin}>
         Log In
       </Button>
 

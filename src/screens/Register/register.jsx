@@ -3,8 +3,10 @@ import React, { useState } from 'react'
 import Screen from '../../components/screen'
 import { Button, TextInput } from 'react-native-paper'
 import { useNavigation } from "@react-navigation/native";
+import { create_master_password_hash } from '../../authorization/password';
+import Config from 'react-native-config';
 
-
+const API_URL = Config.API_URL;
 
 const RegisterScreen = () => {
     const navigation = useNavigation();
@@ -17,30 +19,35 @@ const RegisterScreen = () => {
     const [secondName, setSecondName] = useState("")
 
     const handleRegister = async () => {
-        console.log(username
-            , email
-            , password
-            , confirmPassword,
-        name, secondName)
+        try {
+            const master_password_hash = await create_master_password_hash(password, email)
+            const requestData = {
+                username: username,
+                email: email,
+                name: name,
+                surname: secondName,
+                master_password_hash: master_password_hash
+            }
+    
+            const response = await fetch(`${API_URL}/api/v1/register`, {
+                method: "POST",
+                body: JSON.stringify(requestData)
+            });
+            
+            const data = await response.json()
+    
+            if (!response.ok) {
+                // if register is unsuccess
 
-        const master_password_hash = password
+                return
+            }
 
-        const requestData = {
-            username: username,
-            email: email,
-            name: name,
-            surname: secondName,
-            master_password_hash: master_password_hash
+            // redirect to login page
+
+
+        } catch (error) {
+            // if an error occurs during password hashing
         }
-
-        const response = await fetch("192.168.223.153:5050", {
-            method: "POST",
-            body: JSON.stringify(requestData)
-        });
-
-        const data = await response.json()
-
-        console.log(data)
     }
     const handleLoginRedirect = () => {
         navigation.navigate("Login")
