@@ -13,11 +13,34 @@ const RegisterScreen = () => {
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const [confirmPassword, setConfirmPassword] = useState("")
-    const handleRegister = () => {
+    const [name, setName] = useState("")
+    const [secondName, setSecondName] = useState("")
+
+    const handleRegister = async () => {
         console.log(username
             , email
             , password
-            , confirmPassword)
+            , confirmPassword,
+        name, secondName)
+
+        const master_password_hash = password
+
+        const requestData = {
+            username: username,
+            email: email,
+            name: name,
+            surname: secondName,
+            master_password_hash: master_password_hash
+        }
+
+        const response = await fetch("192.168.223.153:5050", {
+            method: "POST",
+            body: JSON.stringify(requestData)
+        });
+
+        const data = await response.json()
+
+        console.log(data)
     }
     const handleLoginRedirect = () => {
         navigation.navigate("Login")
@@ -28,9 +51,11 @@ const RegisterScreen = () => {
         <View style={styles.container}>
             <Text style={styles.headerText} >Create Your Account</Text>
             <TextInput style={styles.input} label="Username" value={username} onChangeText={setUsername} mode='outlined' placeholder='Enter Your Username' />
-            <TextInput style={styles.input} label="Email" mode='outlined' placeholder='Enter Your Email' keyboardType="email-address" />
-            <TextInput style={styles.input} label="Password" mode='outlined' placeholder='Enter Your Password' secureTextEntry={true} />
-            <TextInput style={styles.input} label="Confirm Password" mode='outlined' placeholder='Confirm Your Password' secureTextEntry={true}  />
+            <TextInput style={styles.input} label="Email" mode='outlined' value={email} onChangeText={setEmail} placeholder='Enter Your Email' keyboardType="email-address" />
+            <TextInput style={styles.input} label="Name" mode='outlined' value={name} onChangeText={setName} placeholder='Enter Your Name (optional)' />
+            <TextInput style={styles.input} label="SecondName" mode='outlined' value={secondName} onChangeText={setSecondName} placeholder='Enter Your Second Name (optional)' />
+            <TextInput style={styles.input} label="Password" mode='outlined' value={password} onChangeText={setPassword} placeholder='Enter Your Password' secureTextEntry={true} />
+            <TextInput style={styles.input} label="Confirm Password" mode='outlined' value={confirmPassword} onChangeText={setConfirmPassword} placeholder='Confirm Your Password' secureTextEntry={true}  />
             <Button mode="contained" style={styles.registerButton} onPress={handleRegister}> Sign Up</Button>
             <Text style={styles.footerText} >Already have an account?{" "}
                 <Text style={{color: '#6200ee' , fontWeight:"bold"}} onPress={handleLoginRedirect}  > Sign In</Text>
