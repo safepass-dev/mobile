@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Safepass",
+    "name": "safepass",
     "slug": "safepass",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.mobile",
+      "bundleIdentifier": "com.anonymous.safepass",
       "buildNumber": 1
     },
     "android": {
@@ -22,7 +22,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.anonymous.mobile",
+      "package": "com.anonymous.safepass",
       "versionCode": 1
     },
     "web": {
