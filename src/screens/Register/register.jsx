@@ -1,12 +1,12 @@
 import { StyleSheet, Text, View } from 'react-native'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Screen from '../../components/screen'
 import { Button, TextInput } from 'react-native-paper'
-import { useNavigation } from "@react-navigation/native";
-import { create_master_password_hash } from '../../authorization/password';
-import Config from 'react-native-config';
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import config from "../../../config.json";
+import NativeCrypto from "../../../modules/native-crypto";
 
-const API_URL = Config.API_URL;
+const API_URL = config.API_URL;
 
 const RegisterScreen = () => {
     const navigation = useNavigation();
@@ -18,36 +18,92 @@ const RegisterScreen = () => {
     const [name, setName] = useState("")
     const [secondName, setSecondName] = useState("")
 
-    const handleRegister = async () => {
-        try {
-            const master_password_hash = await create_master_password_hash(password, email)
-            const requestData = {
-                username: username,
-                email: email,
-                name: name,
-                surname: secondName,
-                master_password_hash: master_password_hash
-            }
-    
-            const response = await fetch(`${API_URL}/api/v1/register`, {
-                method: "POST",
-                body: JSON.stringify(requestData)
-            });
-            
-            const data = await response.json()
-    
-            if (!response.ok) {
-                // if register is unsuccess
+    const [encryptedKeyData, setEncryptedKeyData] = useState("");
 
-                return
-            }
+    const [loading, setLoading] = useState(false);
 
-            // redirect to login page
+    const sendRegisterRequest = async (masterPasswordHash, protectedSymmetricKey) => {
+        const requestData = {
+            username,
+            email,
+            name,
+            surname: secondName,
+            password,
+            masterPasswordHash,
+            protectedSymmetricKey
+        };
 
+        const response = await fetch(`http://${API_URL}/api/v1/auth/register`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(requestData)
+        });
 
-        } catch (error) {
-            // if an error occurs during password hashing
+        const data = await response.json();
+        console.log(response.status, response.statusText, data);
+
+        setLoading(false);
+
+        if (!response.ok) {
+            // Kayıt başarısız. Ekrana bildirim basılacak.
+            return
         }
+
+        // Kayıt başarılı. Ekrana bildirim basıp logine yönlendirilecek.
+    }
+
+    const listener = ({ value: result }) => {
+        setEncryptedKeyData(result);
+    }
+
+    useFocusEffect(
+        React.useCallback(() => {
+            NativeCrypto.addListener("onResult", listener);
+    
+            return () => {
+                NativeCrypto.removeListener("onResult", listener);
+            };
+        }, [])
+    )
+
+    useEffect(() => {
+        if (encryptedKeyData === "") {
+            // Şifreleme sırasında bir hata var. Ekrana hata bildirimi basılacak.
+            return
+        }
+
+        console.log(encryptedKeyData);
+        
+        const data = JSON.parse(encryptedKeyData);
+
+        const masterPasswordHash = data.masterPasswordHash;
+        const protectedSymmetricKey = data.protectedSymmetricKey;
+
+        if (
+            masterPasswordHash === "" ||
+            masterPasswordHash ===  null ||
+            protectedSymmetricKey === "" ||
+            protectedSymmetricKey === null
+        ) {
+            // Şifreleme sırasında bir hata var. Ekrana hata bildirimi basılacak.
+            return
+        }
+
+        sendRegisterRequest(masterPasswordHash, protectedSymmetricKey);
+    }, [encryptedKeyData]);
+
+    const handleRegister = async () => {
+        console.log({ username, email, password });
+
+        if (password != confirmPassword) {
+            // Şifreler eşleşmiyor. Ekrana hata mesajı basılacak.
+            return
+        }
+
+        setLoading(true);
+        NativeCrypto.createMphAndPsk(password, email);
     }
     const handleLoginRedirect = () => {
         navigation.navigate("Login")
@@ -73,14 +129,12 @@ const RegisterScreen = () => {
   )
 }
 
-
-
 const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#fff',
         justifyContent: 'center',
-        allignItems: 'center',
+        alignItems: 'center',
         paddingHorizontal: 20,
       },
       footerContainer:{

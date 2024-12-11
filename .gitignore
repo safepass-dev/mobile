@@ -35,3 +35,9 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+modules/native-crypto/android/build
+modules/native-crypto/ios/build
+
+/android
+/ios
