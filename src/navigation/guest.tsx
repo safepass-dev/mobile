@@ -1,7 +1,5 @@
-import { StyleSheet, Text, View } from "react-native";
-import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { NavigationContainer } from "@react-navigation/native";
+import React from "react";
 import HomeScreen from "../screens/Home/home";
 import LoginScreen from "../screens/Login/login";
 import RegisterScreen from "../screens/Register/register";

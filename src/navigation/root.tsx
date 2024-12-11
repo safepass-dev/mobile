@@ -1,9 +1,8 @@
-import { StyleSheet, Text, View } from "react-native";
 import React from "react";
 
-import Auth from "./auth";
-import GuestStack from "./guest";
 import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import GuestStack from "./guest";
 
 const Stack = createNativeStackNavigator();
 

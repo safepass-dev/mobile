@@ -1,65 +1,81 @@
+import {
+  NavigationProp,
+  ParamListBase,
+  useNavigation,
+} from "@react-navigation/native";
 import React from "react";
-import { View, StyleSheet, Image } from "react-native";
+import { Image, StyleSheet, View } from "react-native";
 import { Button, Text } from "react-native-paper";
 import Screen from "../../components/screen";
-import { useNavigation } from "@react-navigation/native";
 
 const HomeScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp<ParamListBase>>();
 
   const handleLogin = () => {
     navigation.navigate("Login");
   };
 
   const handleRegister = () => {
-    navigation.navigate("Register"); 
+    navigation.navigate("Register");
   };
 
   return (
     <Screen>
       <View style={styles.container}>
-      {/* Logo */}
-      <Image
-        source={{ uri: "https://via.placeholder.com/150" }} 
-        style={styles.logoImage}
-      />
+        {/* Logo */}
+        <Image
+          source={{ uri: "https://via.placeholder.com/150" }}
+          style={styles.logoImage}
+        />
 
-      {/* Uygulamaya Hoş Geldiniz */}
-      <Text style={styles.welcomeText}>Welcome to</Text>
-      <Text style={styles.appText}>SafePass</Text>
+        {/* Uygulamaya Hoş Geldiniz */}
+        <Text style={styles.welcomeText}>Welcome to</Text>
+        <Text style={styles.appText}>SafePass</Text>
 
-      {/* Butonlar */}
+        {/* Butonlar */}
 
-      <Button mode="contained" style={styles.loginButton} onPress={handleLogin}> Sign In</Button>
-      <Button mode="outlined" style={styles.registerButton} onPress={handleRegister}> Create New Account</Button>
-      
-    </View>
+        <Button
+          mode="contained"
+          style={styles.loginButton}
+          onPress={handleLogin}
+        >
+          {" "}
+          Sign In
+        </Button>
+        <Button
+          mode="outlined"
+          style={styles.registerButton}
+          onPress={handleRegister}
+        >
+          {" "}
+          Create New Account
+        </Button>
+      </View>
     </Screen>
   );
 };
 
 const styles = StyleSheet.create({
-  container:{
+  container: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#fff",
     paddingHorizontal: 20,
-
   },
-  logoImage:{
+  logoImage: {
     width: 150,
     height: 150,
     marginBottom: 30,
   },
-  welcomeText:{
+  welcomeText: {
     fontSize: 24,
     fontWeight: "bold",
     textAlign: "center",
     color: "#333",
     marginBottom: 5,
   },
-  appText:{
+  appText: {
     fontSize: 28,
     fontWeight: "bold",
     textAlign: "center",
