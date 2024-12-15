@@ -29,8 +29,8 @@ const RegisterScreen = () => {
             name,
             surname: secondName,
             password,
-            masterPasswordHash,
-            protectedSymmetricKey
+            "master_password_hash": masterPasswordHash,
+            "protected_symmetric_key": protectedSymmetricKey
         };
 
         const response = await fetch(`http://${API_URL}/api/v1/auth/register`, {

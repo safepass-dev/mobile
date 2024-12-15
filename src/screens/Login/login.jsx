@@ -17,10 +17,10 @@ const LoginScreen = () => {
 
     const [loading, setLoading] = useState(false);
 
-    const sendLoginRequest = async (masterPasswordHash, protectedSymmetricKey) => {
+    const sendLoginRequest = async (masterPasswordHash, encryptionKeys) => {
         const requestData = {
             email,
-            masterPasswordHash
+            "master_password_hash": masterPasswordHash
         };
 
         const response = await fetch(`http://${API_URL}/api/v1/auth/login`, {
@@ -41,7 +41,24 @@ const LoginScreen = () => {
             return
         }
 
+        const response1 = await fetch(`http://${API_URL}/api/v1/vault/@me`, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + data.data.token
+            }
+        });
+
+        const data1 = await response1.json();
+
+        console.log(`${data1.data.mac}:${data1.data.protected_symmetric_key}`)
+        console.log(encryptionKeys)
+
+        console.log(NativeCrypto.setEncryptionKey(`${data1.data.mac}:${data1.data.protected_symmetric_key}`, encryptionKeys))
+
         // Kayıt başarılı. Ekrana bildirim basıp token ve user id local db'ye kayıt edilecek.
+
+        console.log(NativeCrypto.getEncryptionKey());
     }
 
     const listener = ({ value: result }) => {
@@ -69,19 +86,19 @@ const LoginScreen = () => {
         const data = JSON.parse(encryptedKeyData);
 
         const masterPasswordHash = data.masterPasswordHash;
-        const protectedSymmetricKey = data.protectedSymmetricKey;
+        const encryptionKeys = data.encryptionKeys;
 
         if (
             masterPasswordHash === "" ||
             masterPasswordHash ===  null ||
-            protectedSymmetricKey === "" ||
-            protectedSymmetricKey === null
+            encryptionKeys === "" ||
+            encryptionKeys === null
         ) {
             // Şifreleme sırasında bir hata var. Ekrana hata bildirimi basılacak.
             return
         }
 
-        sendLoginRequest(masterPasswordHash, protectedSymmetricKey);
+        sendLoginRequest(masterPasswordHash, encryptionKeys);
     }, [encryptedKeyData]);
 
     const handleLogin = async () => {
