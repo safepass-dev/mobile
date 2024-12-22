@@ -10,10 +10,10 @@ const Stack = createNativeStackNavigator();
 const GuestStack = () => {
   return (
     <Stack.Navigator>
-      <Stack.Screen name="Dashboard" component={DashboardScreen} />
       <Stack.Screen name="Home" component={HomeScreen} />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen name="Dashboard" component={DashboardScreen} />
     </Stack.Navigator>
   );
 };

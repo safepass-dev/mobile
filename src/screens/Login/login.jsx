@@ -17,6 +17,7 @@ const LoginScreen = () => {
   const [encryptedKeyData, setEncryptedKeyData] = useState("");
 
   const [loading, setLoading] = useState(false);
+  const [isFirst, setIsFirst] = useState(true);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [modalType, setModalType] = useState("success");
@@ -55,7 +56,7 @@ const LoginScreen = () => {
 
     if (!response.ok) {
       // Kayıt başarısız. Ekrana bildirim basılacak.
-
+      showError("incorrect password or email");
       return;
     }
 
@@ -79,7 +80,7 @@ const LoginScreen = () => {
       )
     );
 
-    // Kayıt başarılı. Ekrana bildirim basıp token ve user id local db'ye kayıt edilecek.
+    // Giriş başarılı. Ekrana bildirim basıp token ve user id local db'ye kayıt edilecek.
     showSuccess("Success");
     console.log("deneme", NativeCrypto.getEncryptionKey());
   };
@@ -98,35 +99,41 @@ const LoginScreen = () => {
     }, [])
   );
 
-  useEffect(() => {
-    if (encryptedKeyData === "") {
-      // Şifreleme sırasında bir hata var. Ekrana hata bildirimi basılacak.
-      // Burası login ekranına girildiği gibi tetikleniyor ve modal gösteriliyor.
-      showError("Şifreleme sırasında bir hata var!");
-
-      return;
-    }
-
-    console.log(encryptedKeyData);
-
-    const data = JSON.parse(encryptedKeyData);
-
-    const masterPasswordHash = data.masterPasswordHash;
-    const encryptionKeys = data.encryptionKeys;
-
-    if (
-      masterPasswordHash === "" ||
-      masterPasswordHash === null ||
-      encryptionKeys === "" ||
-      encryptionKeys === null
-    ) {
-      // Şifreleme sırasında bir hata var. Ekrana hata bildirimi basılacak.
-      showError("Şifreleme sırasında bir hata var.!");
-      return;
-    }
-
-    sendLoginRequest(masterPasswordHash, encryptionKeys);
-  }, [encryptedKeyData]);
+  useFocusEffect(
+    React.useCallback(() => {
+      if (isFirst) {
+        setIsFirst(false);
+        return
+      }
+      if (encryptedKeyData === "") {
+        // Şifreleme sırasında bir hata var. Ekrana hata bildirimi basılacak.
+        // Burası login ekranına girildiği gibi tetikleniyor ve modal gösteriliyor.
+        showError("Şifreleme sırasında bir hata var!");
+  
+        return;
+      }
+  
+      console.log(encryptedKeyData);
+  
+      const data = JSON.parse(encryptedKeyData);
+  
+      const masterPasswordHash = data.masterPasswordHash;
+      const encryptionKeys = data.encryptionKeys;
+  
+      if (
+        masterPasswordHash === "" ||
+        masterPasswordHash === null ||
+        encryptionKeys === "" ||
+        encryptionKeys === null
+      ) {
+        // Şifreleme sırasında bir hata var. Ekrana hata bildirimi basılacak.
+        showError("Şifreleme sırasında bir hata var.!");
+        return;
+      }
+  
+      sendLoginRequest(masterPasswordHash, encryptionKeys);
+    }, [encryptedKeyData])
+  );
 
   const handleLogin = async () => {
     setLoading(true);

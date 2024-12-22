@@ -2,7 +2,7 @@ import React, { FC, PropsWithChildren } from "react";
 import { StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const Screen: FC<PropsWithChildren> = ({ children }) => {
+const Screen = ({ children }) => {
   return (
     <SafeAreaView style={styles.safeAreaContainer}>
       <View style={styles.container}>{children}</View>

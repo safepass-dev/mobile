@@ -22,6 +22,7 @@ const RegisterScreen = () => {
   const [encryptedKeyData, setEncryptedKeyData] = useState("");
 
   const [loading, setLoading] = useState(false);
+  const [isFirst, setIsFirst] = useState(true);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [modalType, setModalType] = useState("success");
@@ -90,33 +91,39 @@ const RegisterScreen = () => {
     }, [])
   );
 
-  useEffect(() => {
-    if (encryptedKeyData === "") {
-      // Şifreleme sırasında bir hata var. Ekrana hata bildirimi basılacak.
-      showError("An error occurred while encrypting the data.");
-      return;
-    }
-
-    console.log(encryptedKeyData);
-
-    const data = JSON.parse(encryptedKeyData);
-
-    const masterPasswordHash = data.masterPasswordHash;
-    const protectedSymmetricKey = data.protectedSymmetricKey;
-
-    if (
-      masterPasswordHash === "" ||
-      masterPasswordHash === null ||
-      protectedSymmetricKey === "" ||
-      protectedSymmetricKey === null
-    ) {
-      // Şifreleme sırasında bir hata var. Ekrana hata bildirimi basılacak.
-      showError("An error occurred while encrypting the data.");
-      return;
-    }
-
-    sendRegisterRequest(masterPasswordHash, protectedSymmetricKey);
-  }, [encryptedKeyData]);
+  useFocusEffect(
+    React.useCallback(() => {
+      if (isFirst) {
+        setIsFirst(false);
+        return
+      }
+      if (encryptedKeyData === "") {
+        // Şifreleme sırasında bir hata var. Ekrana hata bildirimi basılacak.
+        showError("An error occurred while encrypting the data.");
+        return;
+      }
+  
+      console.log(encryptedKeyData);
+  
+      const data = JSON.parse(encryptedKeyData);
+  
+      const masterPasswordHash = data.masterPasswordHash;
+      const protectedSymmetricKey = data.protectedSymmetricKey;
+  
+      if (
+        masterPasswordHash === "" ||
+        masterPasswordHash === null ||
+        protectedSymmetricKey === "" ||
+        protectedSymmetricKey === null
+      ) {
+        // Şifreleme sırasında bir hata var. Ekrana hata bildirimi basılacak.
+        showError("An error occurred while encrypting the data.");
+        return;
+      }
+  
+      sendRegisterRequest(masterPasswordHash, protectedSymmetricKey);
+    }, [encryptedKeyData])
+  );
 
   const handleRegister = async () => {
     console.log({ username, email, password });

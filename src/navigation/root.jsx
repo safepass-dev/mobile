@@ -8,12 +8,12 @@ const Stack = createNativeStackNavigator();
 
 const RootStack = () => {
   return (
-    <NavigationContainer>
-      <Stack.Navigator>
-        <Stack.Screen name="Guest" component={GuestStack} />
-        {/* <Stack.Screen name="Auth" component={Auth} /> */}
-      </Stack.Navigator>
-    </NavigationContainer>
+    <Stack.Navigator>
+      <Stack.Screen name="Guest" component={GuestStack} options={{
+        headerShown: false,
+      }} />
+      {/* <Stack.Screen name="Auth" component={Auth} /> */}
+    </Stack.Navigator>
   );
 };
 
