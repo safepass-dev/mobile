@@ -1,10 +1,12 @@
 import { StyleSheet, Text, View } from 'react-native'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Screen from '../../components/screen'
 import { Button, TextInput } from 'react-native-paper'
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import config from "../../../config.json";
+import NativeCrypto from "../../../modules/native-crypto";
 
-
+const API_URL = config.API_URL;
 
 const RegisterScreen = () => {
     const navigation = useNavigation();
@@ -16,31 +18,92 @@ const RegisterScreen = () => {
     const [name, setName] = useState("")
     const [secondName, setSecondName] = useState("")
 
-    const handleRegister = async () => {
-        console.log(username
-            , email
-            , password
-            , confirmPassword,
-        name, secondName)
+    const [encryptedKeyData, setEncryptedKeyData] = useState("");
 
-        const master_password_hash = password
+    const [loading, setLoading] = useState(false);
 
+    const sendRegisterRequest = async (masterPasswordHash, protectedSymmetricKey) => {
         const requestData = {
-            username: username,
-            email: email,
-            name: name,
+            username,
+            email,
+            name,
             surname: secondName,
-            master_password_hash: master_password_hash
-        }
+            password,
+            masterPasswordHash,
+            protectedSymmetricKey
+        };
 
-        const response = await fetch("192.168.223.153:5050", {
+        const response = await fetch(`http://${API_URL}/api/v1/auth/register`, {
             method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
             body: JSON.stringify(requestData)
         });
 
-        const data = await response.json()
+        const data = await response.json();
+        console.log(response.status, response.statusText, data);
 
-        console.log(data)
+        setLoading(false);
+
+        if (!response.ok) {
+            // Kayıt başarısız. Ekrana bildirim basılacak.
+            return
+        }
+
+        // Kayıt başarılı. Ekrana bildirim basıp logine yönlendirilecek.
+    }
+
+    const listener = ({ value: result }) => {
+        setEncryptedKeyData(result);
+    }
+
+    useFocusEffect(
+        React.useCallback(() => {
+            NativeCrypto.addListener("onResult", listener);
+    
+            return () => {
+                NativeCrypto.removeListener("onResult", listener);
+            };
+        }, [])
+    )
+
+    useEffect(() => {
+        if (encryptedKeyData === "") {
+            // Şifreleme sırasında bir hata var. Ekrana hata bildirimi basılacak.
+            return
+        }
+
+        console.log(encryptedKeyData);
+        
+        const data = JSON.parse(encryptedKeyData);
+
+        const masterPasswordHash = data.masterPasswordHash;
+        const protectedSymmetricKey = data.protectedSymmetricKey;
+
+        if (
+            masterPasswordHash === "" ||
+            masterPasswordHash ===  null ||
+            protectedSymmetricKey === "" ||
+            protectedSymmetricKey === null
+        ) {
+            // Şifreleme sırasında bir hata var. Ekrana hata bildirimi basılacak.
+            return
+        }
+
+        sendRegisterRequest(masterPasswordHash, protectedSymmetricKey);
+    }, [encryptedKeyData]);
+
+    const handleRegister = async () => {
+        console.log({ username, email, password });
+
+        if (password != confirmPassword) {
+            // Şifreler eşleşmiyor. Ekrana hata mesajı basılacak.
+            return
+        }
+
+        setLoading(true);
+        NativeCrypto.createMphAndPsk(password, email);
     }
     const handleLoginRedirect = () => {
         navigation.navigate("Login")
@@ -66,14 +129,12 @@ const RegisterScreen = () => {
   )
 }
 
-
-
 const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#fff',
         justifyContent: 'center',
-        allignItems: 'center',
+        alignItems: 'center',
         paddingHorizontal: 20,
       },
       footerContainer:{
