@@ -25,6 +25,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.security.MessageDigest
 
 class NativeCryptoModule : Module() {
     private val randomGenerator = SecureRandom();
@@ -46,6 +47,21 @@ class NativeCryptoModule : Module() {
         Function("createMph") { password: String, email: String ->
             createMph(password, email);
         }
+
+        Function("getEncryptionKey") {
+            return@Function getPreferences().getString("encryptionKey", "");
+        }
+
+        Function("setEncryptionKey") { psk: String, keys: String ->
+            return@Function saveEncryptionKeyFun(psk, keys);
+        }
+    }
+
+    private val context
+    get() = requireNotNull(appContext.reactContext)
+
+    private fun getPreferences(): SharedPreferences {
+        return context.getSharedPreferences(context.packageName + ".vault", Context.MODE_PRIVATE)
     }
 
     private fun generateRandomBytes(length: Int): ByteArray {
@@ -84,7 +100,6 @@ class NativeCryptoModule : Module() {
     }
 
     private fun decryptWithAES256(encryptedData: ByteArray, key: SecretKey, iv: IvParameterSpec): ByteArray {
-        val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
         cipher.init(Cipher.DECRYPT_MODE, key, iv);
 
         return cipher.doFinal(encryptedData);
@@ -126,7 +141,7 @@ class NativeCryptoModule : Module() {
 
     private fun createStretchedMasterKey(masterKey: ByteArray, email: ByteArray): ByteArray {
         val info = "safepass".toByteArray();
-        val outputSize = 64 * 8;
+        val outputSize = 64;
 
         return hkdf(masterKey, email, info, outputSize);
     }
@@ -135,7 +150,7 @@ class NativeCryptoModule : Module() {
         val stretchedMasterKey = createStretchedMasterKey(masterKey, email);
 
         val secretKey = SecretKeySpec(stretchedMasterKey, 0, 32, "AES");
-        val macKey = SecretKeySpec(stretchedMasterKey, 32, 64, "HmacSHA256");
+        val macKey = SecretKeySpec(stretchedMasterKey, 32, 32, "HmacSHA256");
 
         val keyGenerator = KeyGenerator.getInstance("AES");
         keyGenerator.init(256);
@@ -145,14 +160,16 @@ class NativeCryptoModule : Module() {
         val iv = IvParameterSpec(ivByteArray);
         val ciphertext = encryptWithAES256(symmetricKey.encoded, secretKey, iv);
 
+        val mergedData = ivByteArray + ciphertext
+
         val mac = Mac.getInstance("HmacSHA256");
         mac.init(macKey);
-        mac.update(ciphertext);
+        mac.update(mergedData);
 
         val ciphertextMac = mac.doFinal();
 
         val ciphertextMacBase64 = Base64.encodeToString(ciphertextMac, Base64.NO_WRAP);
-        val ciphertextBase64 = Base64.encodeToString(ivByteArray + ciphertextMac, Base64.NO_WRAP);
+        val ciphertextBase64 = Base64.encodeToString(ivByteArray + ciphertext, Base64.NO_WRAP);
 
         return "$ciphertextMacBase64:$ciphertextBase64";
     }
@@ -298,5 +315,46 @@ class NativeCryptoModule : Module() {
         }
 
         return "hello";
+    }
+
+    fun saveEncryptionKeyFun(protectedSymmetricKeyBase64: String, keyBase64: String): String {
+        var parts = protectedSymmetricKeyBase64.split(":");
+        val mac = parts[0];
+        val data = parts[1];
+
+        parts = keyBase64.split(":");
+        val enKeyBase64 = parts[0];
+        val macKeyBase64 = parts[1];
+
+        val protectedSymmetricKey = Base64.decode(data, Base64.NO_WRAP);
+        val macBytes = Base64.decode(mac, Base64.NO_WRAP);
+        val enKey = SecretKeySpec(Base64.decode(enKeyBase64, Base64.NO_WRAP), "AES");
+        val macKey = Base64.decode(macKeyBase64, Base64.NO_WRAP);
+
+        if (!verifyMac(macKey, protectedSymmetricKey, macBytes)) {
+            return "error: invalid mac";
+        }
+
+        val iv = IvParameterSpec(protectedSymmetricKey.copyOfRange(0, 16));
+        val ciphertext = protectedSymmetricKey.copyOfRange(16, protectedSymmetricKey.size);
+
+        val encryptionKey = decryptWithAES256(ciphertext, enKey, iv);
+
+        getPreferences().edit().putString("encryptionKey", Base64.encodeToString(encryptionKey, Base64.NO_WRAP)).apply()
+
+        return Base64.encodeToString(encryptionKey, Base64.NO_WRAP);
+    }
+
+    private fun verifyMac(
+        macKey: ByteArray,
+        ciphertext: ByteArray,
+        receivedMac: ByteArray
+    ): Boolean {
+        val mac = Mac.getInstance("HmacSHA256");
+        mac.init(SecretKeySpec(macKey, "HmacSHA256"));
+        mac.update(ciphertext);
+
+        val calculatedMac = mac.doFinal();
+        return MessageDigest.isEqual(receivedMac, calculatedMac);
     }
 }

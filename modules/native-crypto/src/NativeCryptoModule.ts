@@ -6,6 +6,8 @@ declare class NativeCryptoModule extends NativeModule<NativeCryptoModuleEvents> 
   PI: number;
   createMphAndPsk(): void;
   createMph(): void;
+  getEncryptionKey(): string;
+  setEncryptionKey(): string;
   setValueAsync(value: string): Promise<void>;
 }
 
