@@ -1,92 +1,114 @@
-import React from "react";
+import React, { useState } from "react";
 import { FlatList, StyleSheet, Text, TextInput, View } from "react-native";
 import { Appbar, Button, PaperProvider } from "react-native-paper";
 import PasswordCard from "../../components/passwordCard";
 import AddPasswordModal from "../../components/passwordModal";
+import { useSQLiteContext } from "expo-sqlite";
+import { getUserFromId } from "@/database/dbServices/useDatabase";
+import config from "../../../config.json";
+import { useFocusEffect } from "@react-navigation/native";
+import CustomModal from "@/components/customModal";
 
-// Dummy data
-const data = [
-  {
-    id: "14",
-    name: "Dribbble",
-    email: "syadiktasya@gmail.com",
-    // icon: <MaterialIcons name="search" size={24} color="#fff" />,
-  },
-  {
-    id: "15",
-    name: "Dribbble",
-    email: "syadiktasya@gmail.com",
-    // icon: <MaterialIcons name="search" size={24} color="#fff" />,
-  },
-  {
-    id: "13",
-    name: "Dribbble",
-    email: "syadiktasya@gmail.com",
-    // icon: <MaterialIcons name="search" size={24} color="#fff" />,
-  },
-  {
-    id: "12",
-    name: "Dribbble",
-    email: "syadiktasya@gmail.com",
-    // icon: <MaterialIcons name="search" size={24} color="#fff" />,
-  },
-  {
-    id: "11",
-    name: "Dribbble",
-    email: "syadiktasya@gmail.com",
-    // icon: <MaterialIcons name="search" size={24} color="#fff" />,
-  },
-  {
-    id: "10",
-    name: "Dribbble",
-    email: "syadiktasya@gmail.com",
-    // icon: <MaterialIcons name="search" size={24} color="#fff" />,
-  },
-  {
-    id: "9",
-    name: "Dribbble",
-    email: "syadiktasya@gmail.com",
-    // icon: <MaterialIcons name="search" size={24} color="#fff" />,
-  },
-  {
-    id: "2",
-    name: "Microsoft 365",
-    email: "tasyasyadik23@outlook.com",
-    // icon: <MaterialIcons name="search" size={24} color="#fff" />,
-  },
-  {
-    id: "3",
-    name: "Airbnb",
-    email: "syadiktasya@gmail.com",
-    // icon: <MaterialIcons name="search" size={24} color="#fff" />,
-  },
-  {
-    id: "4",
-    name: "PayPal",
-    email: "tasyasyadik23@outlook.com",
-    // icon: <MaterialIcons name="search" size={24} color="#fff" />,
-  },
-  {
-    id: "5",
-    name: "Netflix",
-    email: "syadiktasya@gmail.com",
-    // icon: <MaterialIcons name="search" size={24} color="#fff" />,
-  },
-];
+const API_URL = config.API_URL;
 
-const DashboardScreen = () => {
+const DashboardScreen = ({ route }) => {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [modalVisible, setModalVisible] = React.useState(false);
-  const [newPasswords, setNewPasswords] = React.useState(data);
+  const [passwords, setPasswords] = React.useState([]);
 
-  const filteredPasswords = data.filter(
+  const [infoModalVisible, setInfoModalVisible] = useState(false);
+  const [modalType, setModalType] = useState("success");
+  const [modalMessage, setModalMessage] = useState("default");
+
+  const showSuccess = (message) => {
+    setModalType("success");
+    setModalMessage(message);
+    setInfoModalVisible(true);
+  };
+
+  const [token, setToken] = useState("");
+
+  const db = useSQLiteContext();
+
+  const { user_id } = route.params;
+
+  const filteredPasswords = passwords.filter(
     (item) =>
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.email.toLowerCase().includes(searchQuery.toLowerCase())
+      item.app_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.username.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  
+  useFocusEffect(
+    React.useCallback(() => {
+      (async () => {
+        try {
+          const user = await getUserFromId(db, user_id);
+          setToken(user.token);
+        } catch (error) {
+          console.log(error)
+        }
+      })();
+    }, [])
+  )
 
-  const addNewPassword = (newPassword) => {
-    setNewPasswords(newPassword);
+  useFocusEffect(
+    React.useCallback(() => {
+      (async () => {
+        try {
+          console.log(token)
+
+          if (token === "") {
+            return;
+          }
+
+          const response = await fetch(`http://${API_URL}/api/v1/vault/passwords`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            }
+          });
+  
+          const data = await response.json();
+          console.log(data)
+          
+          if (!response.ok) {
+            return;
+          }
+
+          setPasswords(data.data);
+        } catch (error) {
+          console.log(error)
+        }
+      })();
+    }, [token])
+  )
+
+  const addNewPassword = async (newPassword) => {
+    const response = await fetch(`http://${API_URL}/api/v1/vault/password/create`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        app_name: newPassword.title,
+        uri: newPassword.uri,
+        username: newPassword.username,
+        encrypted_password: newPassword.password
+      })
+    });
+
+    const data = await response.json();
+    console.log(data);
+
+    if (!response.ok) {
+      return;
+    }
+
+    setPasswords((prevItems) => [...prevItems, data.data])
+    showSuccess("Password successfully added");
+
     setModalVisible(false);
   };
 
@@ -132,6 +154,13 @@ const DashboardScreen = () => {
           </Button>
         </View>
       </View>
+
+      <CustomModal
+        visible={infoModalVisible}
+        message={modalMessage}
+        onDismiss={() => { setInfoModalVisible(false) }}
+        type={modalType}
+      />
 
       <AddPasswordModal
         visible={modalVisible}

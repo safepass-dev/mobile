@@ -6,13 +6,15 @@ const AddPasswordModal = ({ visible, onClose, onAdd }) => {
   const [title, setTitle] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [uri, setUri] = useState("");
 
   const handleAdd = () => {
-    const newPassword = { title, username, password };
+    const newPassword = { title, username, password, uri };
     onAdd(newPassword);
     setTitle("");
     setUsername("");
     setPassword("");
+    setUri("");
     onClose();
   };
 
@@ -41,6 +43,12 @@ const AddPasswordModal = ({ visible, onClose, onAdd }) => {
           onChangeText={setPassword}
           style={styles.input}
           secureTextEntry
+        />
+        <TextInput
+          label="Website Uri"
+          value={uri}
+          onChangeText={setUri}
+          style={styles.input}
         />
         <Button mode="contained" onPress={handleAdd} style={styles.button}>
           Add Password

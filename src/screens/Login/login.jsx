@@ -5,6 +5,8 @@ import { Button, PaperProvider, Text, TextInput } from "react-native-paper";
 import config from "../../../config.json";
 import NativeCrypto from "../../../modules/native-crypto";
 import CustomModal from "../../components/customModal";
+import { addUser } from "@/database/dbServices/useDatabase";
+import { useSQLiteContext } from "expo-sqlite";
 
 const API_URL = config.API_URL;
 
@@ -22,6 +24,8 @@ const LoginScreen = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalType, setModalType] = useState("success");
   const [modalMessage, setModalMessage] = useState("default");
+
+  const db = useSQLiteContext();
 
   const showSuccess = (message) => {
     setModalType("success");
@@ -60,29 +64,13 @@ const LoginScreen = () => {
       return;
     }
 
-    const response1 = await fetch(`http://${API_URL}/api/v1/vault/@me`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + data.data.token,
-      },
-    });
-
-    const data1 = await response1.json();
-
-    console.log(`${data1.data.mac}:${data1.data.protected_symmetric_key}`);
-    console.log(encryptionKeys);
-
-    console.log(
-      NativeCrypto.setEncryptionKey(
-        `${data1.data.mac}:${data1.data.protected_symmetric_key}`,
-        encryptionKeys
-      )
-    );
+    const user_id = data.data.user_id;
+    const token = data.data.token;
 
     // Giriş başarılı. Ekrana bildirim basıp token ve user id local db'ye kayıt edilecek.
-    showSuccess("Success");
-    console.log("deneme", NativeCrypto.getEncryptionKey());
+    await addUser(db, user_id, token);
+    
+    navigation.navigate("Dashboard", { user_id });
   };
 
   const listener = ({ value: result }) => {
@@ -105,6 +93,7 @@ const LoginScreen = () => {
         setIsFirst(false);
         return
       }
+
       if (encryptedKeyData === "") {
         // Şifreleme sırasında bir hata var. Ekrana hata bildirimi basılacak.
         // Burası login ekranına girildiği gibi tetikleniyor ve modal gösteriliyor.
