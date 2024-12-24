@@ -8,6 +8,8 @@ import { getUserFromId } from "@/database/dbServices/useDatabase";
 import config from "../../../config.json";
 import { useFocusEffect } from "@react-navigation/native";
 import CustomModal from "@/components/customModal";
+import NativeCrypto from "../../../modules/native-crypto";
+import LoadingScreen from "@/components/loadingScreen";
 
 const API_URL = config.API_URL;
 
@@ -76,7 +78,21 @@ const DashboardScreen = ({ route }) => {
             return;
           }
 
-          setPasswords(data.data);
+          const encryptionKey = NativeCrypto.getEncryptionKey();
+
+          const decryptedData = data.data.map(item => {
+            if (item.app_name && item.app_name != "") {
+              item.app_name = decrypt(item.app_name, encryptionKey);
+            }
+
+            if (item.username && item.username != "") {
+              item.username = decrypt(item.username, encryptionKey);
+            }
+
+            return item;
+          });
+
+          setPasswords(decryptedData);
         } catch (error) {
           console.log(error)
         }
@@ -84,7 +100,26 @@ const DashboardScreen = ({ route }) => {
     }, [token])
   )
 
+  function encrypt(data, encryptionKey) {
+    const encryptedData = NativeCrypto.encryptWithChaCha20(data, encryptionKey);
+
+    return encryptedData;
+  }
+
+  function decrypt(data, encryptionKey) {
+    const decryptedData = NativeCrypto.decryptWithChaCha20(data, encryptionKey);
+
+    return decryptedData;
+  }
+
   const addNewPassword = async (newPassword) => {
+    const encryptionKey = NativeCrypto.getEncryptionKey();
+
+    const encrypted_password = encrypt(newPassword.password, encryptionKey);
+    const encrypted_title = newPassword.title != "" ? encrypt(newPassword.title, encryptionKey) : "";
+    const encrypted_uri = newPassword.uri != "" ? encrypt(newPassword.uri, encryptionKey) : "";
+    const encrypted_username = newPassword.username != "" ? encrypt(newPassword.username, encryptionKey) : "";
+
     const response = await fetch(`http://${API_URL}/api/v1/vault/password/create`, {
       method: "POST",
       headers: {
@@ -92,10 +127,10 @@ const DashboardScreen = ({ route }) => {
         "Authorization": `Bearer ${token}`
       },
       body: JSON.stringify({
-        app_name: newPassword.title,
-        uri: newPassword.uri,
-        username: newPassword.username,
-        encrypted_password: newPassword.password
+        app_name: encrypted_title,
+        uri: encrypted_uri,
+        username: encrypted_username,
+        encrypted_password: encrypted_password
       })
     });
 

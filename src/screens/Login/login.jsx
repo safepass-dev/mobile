@@ -7,6 +7,7 @@ import NativeCrypto from "../../../modules/native-crypto";
 import CustomModal from "../../components/customModal";
 import { addUser } from "@/database/dbServices/useDatabase";
 import { useSQLiteContext } from "expo-sqlite";
+import LoadingScreen from "@/components/loadingScreen";
 
 const API_URL = config.API_URL;
 
@@ -200,6 +201,8 @@ const LoginScreen = () => {
 
         <Button onPress={() => showSuccess("DENEME")}>ShowModal</Button>
       </View>
+
+      <LoadingScreen visible={loading} />
     </PaperProvider>
   );
 };

@@ -9,7 +9,7 @@ const PasswordCard = ({ item }) => {
   return (
     <Card style={styles.card}>
       <Card.Content style={styles.content}>
-        <Image source={item.icon} style={styles.icon} />
+        <Image source={require("../../assets/global-network.png")} style={styles.icon} />
 
         <View style={styles.info}>
           <Text variant="bodyMedium" style={styles.name}>
