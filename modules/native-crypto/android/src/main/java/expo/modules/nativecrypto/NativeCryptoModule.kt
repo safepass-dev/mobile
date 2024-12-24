@@ -30,6 +30,7 @@ import java.security.MessageDigest
 class NativeCryptoModule : Module() {
     private val randomGenerator = SecureRandom();
     private val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+    private val chacha20Cipher = Cipher.getInstance("ChaCha20/Poly1305/NoPadding");
 
     override fun definition() = ModuleDefinition {
         Name("NativeCrypto")
@@ -54,6 +55,14 @@ class NativeCryptoModule : Module() {
 
         Function("setEncryptionKey") { psk: String, keys: String ->
             return@Function saveEncryptionKeyFun(psk, keys);
+        }
+
+        Function("encryptWithChaCha20") { data: String, key: String ->
+            return@Function encryptChaCha20(data, key);
+        }
+
+        Function("decryptWithChaCha20") { data: String, key: String ->
+            return@Function decryptChaCha20(data, key);
         }
     }
 
@@ -118,8 +127,6 @@ class NativeCryptoModule : Module() {
         var generatedBytes = 0;
         var blockIndex = 0;
 
-        println("Girdi");
-
         while (generatedBytes < outputSize) {
             blockIndex++;
 
@@ -133,8 +140,6 @@ class NativeCryptoModule : Module() {
             System.arraycopy(previousBlock, 0, okm, generatedBytes, bytesToCopy);
             generatedBytes += bytesToCopy;
         }
-
-        println("Girdi2");
 
         return okm;
     }
@@ -339,10 +344,11 @@ class NativeCryptoModule : Module() {
         val ciphertext = protectedSymmetricKey.copyOfRange(16, protectedSymmetricKey.size);
 
         val encryptionKey = decryptWithAES256(ciphertext, enKey, iv);
+        val encodedEncryptionKey = Base64.encodeToString(encryptionKey, Base64.NO_WRAP);
 
-        getPreferences().edit().putString("encryptionKey", Base64.encodeToString(encryptionKey, Base64.NO_WRAP)).apply()
+        getPreferences().edit().putString("encryptionKey", encodedEncryptionKey).apply()
 
-        return Base64.encodeToString(encryptionKey, Base64.NO_WRAP);
+        return encodedEncryptionKey;
     }
 
     private fun verifyMac(
@@ -356,5 +362,36 @@ class NativeCryptoModule : Module() {
 
         val calculatedMac = mac.doFinal();
         return MessageDigest.isEqual(receivedMac, calculatedMac);
+    }
+
+    fun encryptChaCha20(data: String, key: String): String {
+        val keyBytes = Base64.decode(key, Base64.NO_WRAP);
+        val dataBytes = data.toByteArray();
+
+        val privateKey = SecretKeySpec(keyBytes, "ChaCha20");
+        val nonce = ByteArray(12).apply { SecureRandom().nextBytes(this) };
+
+        chacha20Cipher.init(Cipher.ENCRYPT_MODE, privateKey, IvParameterSpec(nonce));
+        val ciphertext = chacha20Cipher.doFinal(dataBytes);
+
+        val encodedCiphertext = Base64.encodeToString(nonce + ciphertext, Base64.NO_WRAP);
+
+        return encodedCiphertext;
+    }
+
+    fun decryptChaCha20(encryptedData: String, key: String): String {
+        val keyBytes = Base64.decode(key, Base64.NO_WRAP);
+        val encryptedBytes = Base64.decode(encryptedData, Base64.NO_WRAP);
+
+        val nonce = encryptedBytes.copyOfRange(0, 12);
+
+        val ciphertext = encryptedBytes.copyOfRange(12, encryptedBytes.size);
+
+        val privateKey = SecretKeySpec(keyBytes, "ChaCha20");
+        chacha20Cipher.init(Cipher.DECRYPT_MODE, privateKey, IvParameterSpec(nonce));
+
+        val decryptedData = chacha20Cipher.doFinal(ciphertext);
+
+        return decryptedData.toString(Charsets.UTF_8);
     }
 }

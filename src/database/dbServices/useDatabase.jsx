@@ -8,10 +8,11 @@ const addUser = async (db, id, token) => {
   }
 };
 
-const getUsers = async (db) => {
-  const query = `SELECT * FROM users`;
+const getUserFromId = async (db, id) => {
+  const query = `SELECT * FROM users WHERE id=?`;
   try {
-    const result = await db.getAllAsync(query);
+    const result = await db.getFirstAsync(query, [id]);
+    
     return result;
   } catch (error) {
     console.log("Error in getUsers", error);
@@ -38,4 +39,4 @@ const updateUser = async (db, id, token) => {
   }
 };
 
-export { addUser, deleteUser, getUsers, updateUser };
+export { addUser, deleteUser, getUserFromId, updateUser };

@@ -9,14 +9,14 @@ const PasswordCard = ({ item }) => {
   return (
     <Card style={styles.card}>
       <Card.Content style={styles.content}>
-        <Image source={item.icon} style={styles.icon} />
+        <Image source={require("../../assets/global-network.png")} style={styles.icon} />
 
         <View style={styles.info}>
           <Text variant="bodyMedium" style={styles.name}>
-            {item.name}
+            {item.app_name}
           </Text>
           <Text variant="bodySmall" style={styles.email}>
-            {item.email}
+            {item.username}
           </Text>
         </View>
         <Menu
@@ -70,14 +70,15 @@ const styles = StyleSheet.create({
   info: {
     flex: 1,
     justifyContent: "center",
+    rowGap: 5
   },
   name: {
     fontWeight: "bold",
-    fontSize: 16,
+    fontSize: 18,
     color: "#333333",
   },
   email: {
-    fontSize: 14,
+    fontSize: 12,
     color: "#777777",
   },
   menuContainer: {
