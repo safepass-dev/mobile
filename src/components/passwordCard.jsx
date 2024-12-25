@@ -60,25 +60,26 @@ const styles = StyleSheet.create({
   content: {
     flexDirection: "row",
     alignItems: "center",
+    columnGap: 20
   },
   icon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 12,
+    width: 48,
+    height: 48,
+    borderRadius: 20
   },
   info: {
     flex: 1,
     justifyContent: "center",
-    rowGap: 5
+    rowGap: 3
   },
   name: {
-    fontWeight: "bold",
-    fontSize: 18,
+    fontFamily: "AfacadFlux-SemiBold",
+    fontSize: 20,
     color: "#333333",
   },
   email: {
-    fontSize: 12,
+    fontFamily: "AfacadFlux-Regular",
+    fontSize: 13,
     color: "#777777",
   },
   menuContainer: {

@@ -8,6 +8,12 @@ import { useFonts } from "expo-font";
 const App = () => {
   const [loaded, error] = useFonts({
     'AfacadFlux-Black': require('./assets/fonts/AfacadFlux-Black.ttf'),
+    'AfacadFlux-Bold': require('./assets/fonts/AfacadFlux-Bold.ttf'),
+    'AfacadFlux-ExtraBold': require('./assets/fonts/AfacadFlux-ExtraBold.ttf'),
+    'AfacadFlux-Light': require('./assets/fonts/AfacadFlux-Light.ttf'),
+    'AfacadFlux-Medium': require('./assets/fonts/AfacadFlux-Medium.ttf'),
+    'AfacadFlux-Regular': require('./assets/fonts/AfacadFlux-Regular.ttf'),
+    'AfacadFlux-SemiBold': require('./assets/fonts/AfacadFlux-SemiBold.ttf'),
   });
   
   console.log(loaded)

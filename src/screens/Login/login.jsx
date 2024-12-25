@@ -71,7 +71,7 @@ const LoginScreen = () => {
     // Giriş başarılı. Ekrana bildirim basıp token ve user id local db'ye kayıt edilecek.
     await addUser(db, user_id, token);
     
-    navigation.navigate("Dashboard", { user_id });
+    navigation.navigate("Dashboard", { user_id, encryptionKeys });
   };
 
   const listener = ({ value: result }) => {

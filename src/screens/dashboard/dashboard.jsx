@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { FlatList, StyleSheet, Text, TextInput, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { DeviceEventEmitter, FlatList, StyleSheet, Text, TextInput, View } from "react-native";
 import { Appbar, Button, PaperProvider } from "react-native-paper";
 import PasswordCard from "../../components/passwordCard";
 import AddPasswordModal from "../../components/passwordModal";
@@ -9,7 +9,6 @@ import config from "../../../config.json";
 import { useFocusEffect } from "@react-navigation/native";
 import CustomModal from "@/components/customModal";
 import NativeCrypto from "../../../modules/native-crypto";
-import LoadingScreen from "@/components/loadingScreen";
 
 const API_URL = config.API_URL;
 
@@ -22,6 +21,17 @@ const DashboardScreen = ({ route }) => {
   const [modalType, setModalType] = useState("success");
   const [modalMessage, setModalMessage] = useState("default");
 
+  useEffect(() => {
+    const listener = DeviceEventEmitter.addListener('ScreenTurnedOff', () => {
+      console.log('Screen turned off!');
+      // Hesaptan çıkış işlemleri burada yapılabilir
+    });
+
+    return () => {
+      listener.remove(); // Bileşen temizlenirken dinleyiciyi kaldırın
+    };
+  }, []);
+  
   const showSuccess = (message) => {
     setModalType("success");
     setModalMessage(message);
@@ -32,7 +42,7 @@ const DashboardScreen = ({ route }) => {
 
   const db = useSQLiteContext();
 
-  const { user_id } = route.params;
+  const { user_id, encryptionKeys } = route.params;
 
   const filteredPasswords = passwords.filter(
     (item) =>
@@ -45,6 +55,27 @@ const DashboardScreen = ({ route }) => {
       (async () => {
         try {
           const user = await getUserFromId(db, user_id);
+
+          const response = await fetch(`http://${API_URL}/api/v1/vault/@me`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${user.token}`
+            }
+          });
+  
+          const data = await response.json();
+          console.log(data)
+          
+          if (!response.ok) {
+            return;
+          }
+          
+          const protectedSymmetricKey = `${data.data.mac}:${data.data.protected_symmetric_key}`;
+
+          const a = NativeCrypto.setEncryptionKey(protectedSymmetricKey, encryptionKeys);
+          console.log(a)
+
           setToken(user.token);
         } catch (error) {
           console.log(error)
@@ -79,6 +110,7 @@ const DashboardScreen = ({ route }) => {
           }
 
           const encryptionKey = NativeCrypto.getEncryptionKey();
+          console.log(encryptionKey)
 
           const decryptedData = data.data.map(item => {
             if (item.app_name && item.app_name != "") {
@@ -140,8 +172,20 @@ const DashboardScreen = ({ route }) => {
     if (!response.ok) {
       return;
     }
+    
+    const keysToDecrypt = ["app_name", "username"];
+    const decryptedData = {};
+    for (const [keyName, encryptedValue] of Object.entries(data.data)) {
+      var newValue = encryptedValue;
 
-    setPasswords((prevItems) => [...prevItems, data.data])
+      if (keysToDecrypt.includes(keyName)) {
+        newValue = decrypt(encryptedValue, encryptionKey);
+      }
+
+      decryptedData[keyName] = newValue
+    }
+
+    setPasswords((prevItems) => [...prevItems, decryptedData])
     showSuccess("Password successfully added");
 
     setModalVisible(false);
@@ -220,8 +264,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   sectionHeader: {
-    fontSize: 24,
-    fontWeight: "bold",
+    fontFamily: "AfacadFlux-Black",
+    fontSize: 32,
     marginLeft: 16,
     marginBottom: 16,
   },
