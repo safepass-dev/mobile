@@ -1,14 +1,22 @@
+import CustomModal from "@/components/customModal";
+import { getUserFromId } from "@/database/dbServices/useDatabase";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useSQLiteContext } from "expo-sqlite";
 import React, { useEffect, useState } from "react";
-import { DeviceEventEmitter, FlatList, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  DeviceEventEmitter,
+  FlatList,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { Appbar, Button, PaperProvider } from "react-native-paper";
+import config from "../../../config.json";
+import NativeCrypto from "../../../modules/native-crypto";
 import PasswordCard from "../../components/passwordCard";
 import AddPasswordModal from "../../components/passwordModal";
-import { useSQLiteContext } from "expo-sqlite";
-import { getUserFromId } from "@/database/dbServices/useDatabase";
-import config from "../../../config.json";
-import { useFocusEffect } from "@react-navigation/native";
-import CustomModal from "@/components/customModal";
-import NativeCrypto from "../../../modules/native-crypto";
 
 const API_URL = config.API_URL;
 
@@ -21,9 +29,11 @@ const DashboardScreen = ({ route }) => {
   const [modalType, setModalType] = useState("success");
   const [modalMessage, setModalMessage] = useState("default");
 
+  const navigation = useNavigation();
+
   useEffect(() => {
-    const listener = DeviceEventEmitter.addListener('ScreenTurnedOff', () => {
-      console.log('Screen turned off!');
+    const listener = DeviceEventEmitter.addListener("ScreenTurnedOff", () => {
+      console.log("Screen turned off!");
       // Hesaptan çıkış işlemleri burada yapılabilir
     });
 
@@ -31,7 +41,7 @@ const DashboardScreen = ({ route }) => {
       listener.remove(); // Bileşen temizlenirken dinleyiciyi kaldırın
     };
   }, []);
-  
+
   const showSuccess = (message) => {
     setModalType("success");
     setModalMessage(message);
@@ -49,7 +59,7 @@ const DashboardScreen = ({ route }) => {
       item.app_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.username.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  
+
   useFocusEffect(
     React.useCallback(() => {
       (async () => {
@@ -60,59 +70,65 @@ const DashboardScreen = ({ route }) => {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
-              "Authorization": `Bearer ${user.token}`
-            }
+              Authorization: `Bearer ${user.token}`,
+            },
           });
-  
+
           const data = await response.json();
-          console.log(data)
-          
+          console.log(data);
+
           if (!response.ok) {
             return;
           }
-          
+
           const protectedSymmetricKey = `${data.data.mac}:${data.data.protected_symmetric_key}`;
 
-          const a = NativeCrypto.setEncryptionKey(protectedSymmetricKey, encryptionKeys);
-          console.log(a)
+          const a = NativeCrypto.setEncryptionKey(
+            protectedSymmetricKey,
+            encryptionKeys
+          );
+          console.log(a);
 
           setToken(user.token);
         } catch (error) {
-          console.log(error)
+          console.log(error);
         }
       })();
     }, [])
-  )
+  );
 
   useFocusEffect(
     React.useCallback(() => {
       (async () => {
         try {
-          console.log(token)
+          console.log(token);
 
           if (token === "") {
             return;
           }
 
-          const response = await fetch(`http://${API_URL}/api/v1/vault/passwords`, {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${token}`
+          const response = await fetch(
+            `http://${API_URL}/api/v1/vault/passwords`,
+            {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
             }
-          });
-  
+          );
+
           const data = await response.json();
-          console.log(data)
-          
+          console.log(data);
+
           if (!response.ok) {
             return;
           }
 
           const encryptionKey = NativeCrypto.getEncryptionKey();
-          console.log(encryptionKey)
+          console.log(encryptionKey);
 
-          const decryptedData = data.data.map(item => {
+          const decryptedData = data.data.map((item) => {
             if (item.app_name && item.app_name != "") {
               item.app_name = decrypt(item.app_name, encryptionKey);
             }
@@ -121,16 +137,26 @@ const DashboardScreen = ({ route }) => {
               item.username = decrypt(item.username, encryptionKey);
             }
 
+            //uri ve şifreyide detaylarda göstermek için encrypt'e ekledim.
+            if (item.uri && item.uri != "") {
+              item.uri = decrypt(item.uri, encryptionKey);
+            }
+
+            item.encrypted_password = decrypt(
+              item.encrypted_password,
+              encryptionKey
+            );
+
             return item;
           });
 
           setPasswords(decryptedData);
         } catch (error) {
-          console.log(error)
+          console.log(error);
         }
       })();
     }, [token])
-  )
+  );
 
   function encrypt(data, encryptionKey) {
     const encryptedData = NativeCrypto.encryptWithChaCha20(data, encryptionKey);
@@ -144,27 +170,65 @@ const DashboardScreen = ({ route }) => {
     return decryptedData;
   }
 
+  const navigateToPasswordDetails = (password) => {
+    navigation.navigate("PasswordDetails", {
+      passwordDetails: password,
+      onDelete: () => deletePassword(password),
+    });
+  };
+
+  const deletePassword = (password) => {
+    // handle delete on backend also
+    const updatedPasswords = passwords.filter(
+      (item) => item.id !== password.id
+    );
+    setPasswords(updatedPasswords);
+    showSuccess("Password successfully deleted");
+  };
+
+  const filteredPasswordsRenderItem = ({ item }) => {
+    const handleOnPress = () => navigateToPasswordDetails(item);
+    const handlePasswordDelete = () => deletePassword(item);
+    return (
+      <TouchableOpacity onPress={handleOnPress}>
+        <PasswordCard
+          onEdit={handleOnPress}
+          onDelete={handlePasswordDelete}
+          item={item}
+        />
+      </TouchableOpacity>
+    );
+  };
+
   const addNewPassword = async (newPassword) => {
     const encryptionKey = NativeCrypto.getEncryptionKey();
 
     const encrypted_password = encrypt(newPassword.password, encryptionKey);
-    const encrypted_title = newPassword.title != "" ? encrypt(newPassword.title, encryptionKey) : "";
-    const encrypted_uri = newPassword.uri != "" ? encrypt(newPassword.uri, encryptionKey) : "";
-    const encrypted_username = newPassword.username != "" ? encrypt(newPassword.username, encryptionKey) : "";
+    const encrypted_title =
+      newPassword.title != "" ? encrypt(newPassword.title, encryptionKey) : "";
+    const encrypted_uri =
+      newPassword.uri != "" ? encrypt(newPassword.uri, encryptionKey) : "";
+    const encrypted_username =
+      newPassword.username != ""
+        ? encrypt(newPassword.username, encryptionKey)
+        : "";
 
-    const response = await fetch(`http://${API_URL}/api/v1/vault/password/create`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        app_name: encrypted_title,
-        uri: encrypted_uri,
-        username: encrypted_username,
-        encrypted_password: encrypted_password
-      })
-    });
+    const response = await fetch(
+      `http://${API_URL}/api/v1/vault/password/create`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          app_name: encrypted_title,
+          uri: encrypted_uri,
+          username: encrypted_username,
+          encrypted_password: encrypted_password,
+        }),
+      }
+    );
 
     const data = await response.json();
     console.log(data);
@@ -172,8 +236,9 @@ const DashboardScreen = ({ route }) => {
     if (!response.ok) {
       return;
     }
-    
-    const keysToDecrypt = ["app_name", "username"];
+
+    //uri ve şifreyide detaylarda göstermek için encrypt'e ekledim.
+    const keysToDecrypt = ["app_name", "username", "uri", "encrypted_password"];
     const decryptedData = {};
     for (const [keyName, encryptedValue] of Object.entries(data.data)) {
       var newValue = encryptedValue;
@@ -182,10 +247,10 @@ const DashboardScreen = ({ route }) => {
         newValue = decrypt(encryptedValue, encryptionKey);
       }
 
-      decryptedData[keyName] = newValue
+      decryptedData[keyName] = newValue;
     }
 
-    setPasswords((prevItems) => [...prevItems, decryptedData])
+    setPasswords((prevItems) => [...prevItems, decryptedData]);
     showSuccess("Password successfully added");
 
     setModalVisible(false);
@@ -217,7 +282,7 @@ const DashboardScreen = ({ route }) => {
 
         <FlatList
           data={filteredPasswords}
-          renderItem={({ item }) => <PasswordCard item={item} />}
+          renderItem={filteredPasswordsRenderItem}
           keyExtractor={(item) => item.id}
         />
 
@@ -237,7 +302,9 @@ const DashboardScreen = ({ route }) => {
       <CustomModal
         visible={infoModalVisible}
         message={modalMessage}
-        onDismiss={() => { setInfoModalVisible(false) }}
+        onDismiss={() => {
+          setInfoModalVisible(false);
+        }}
         type={modalType}
       />
 
@@ -255,7 +322,7 @@ const styles = StyleSheet.create({
   contentTitleText: {
     fontSize: 24,
     fontWeight: "bold",
-    fontFamily: "sans-serif",
+    fontFamily: "AfacadFlux-Black",
   },
   searchBar: {
     margin: 16,

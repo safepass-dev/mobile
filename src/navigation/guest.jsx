@@ -1,3 +1,4 @@
+import PasswordDetailsScreen from "@/screens/dashboard/passwordDetail";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React from "react";
 import HomeScreen from "../screens/Home/home";
@@ -13,9 +14,21 @@ const GuestStack = () => {
       <Stack.Screen name="Home" component={HomeScreen} />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
-      <Stack.Screen name="Dashboard" component={DashboardScreen} options={{
-        headerShown: false,
-      }} />
+      <Stack.Screen
+        name="Dashboard"
+        component={DashboardScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+
+      <Stack.Screen
+        name="PasswordDetails"
+        component={PasswordDetailsScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack.Navigator>
   );
 };
