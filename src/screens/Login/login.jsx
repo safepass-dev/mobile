@@ -5,7 +5,7 @@ import { Button, PaperProvider, Text, TextInput } from "react-native-paper";
 import config from "../../../config.json";
 import NativeCrypto from "../../../modules/native-crypto";
 import CustomModal from "../../components/customModal";
-import { addUser } from "@/database/dbServices/useDatabase";
+import { addUser } from "@/database/dbServices/usersDatabase";
 import { useSQLiteContext } from "expo-sqlite";
 import LoadingScreen from "@/components/loadingScreen";
 

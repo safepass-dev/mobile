@@ -1,5 +1,5 @@
 import CustomModal from "@/components/customModal";
-import { getUserFromId } from "@/database/dbServices/useDatabase";
+import { getUserFromId } from "@/database/dbServices/usersDatabase";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useSQLiteContext } from "expo-sqlite";
 import React, { useEffect, useState } from "react";
@@ -17,6 +17,8 @@ import config from "../../../config.json";
 import NativeCrypto from "../../../modules/native-crypto";
 import PasswordCard from "../../components/passwordCard";
 import AddPasswordModal from "../../components/passwordModal";
+import { getPasswords, dbSetPassword, dbSetPasswords, deletePassword, deletePasswords, getPassword } from "@/database/dbServices/passwordsDatabase";
+import { deleteVault, getVault, setVault } from "@/database/dbServices/vaultsDatabase";
 
 const API_URL = config.API_URL;
 
@@ -60,35 +62,45 @@ const DashboardScreen = ({ route }) => {
       item.username.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  async function setEncryptionKey(token) {
+    const response = await fetch(`http://${API_URL}/api/v1/vault/@me`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return;
+    }
+
+    const protectedSymmetricKey = `${data.data.mac}:${data.data.protected_symmetric_key}`;
+
+    const a = NativeCrypto.setEncryptionKey(
+      protectedSymmetricKey,
+      encryptionKeys
+    );
+
+    await setVault(db, data.data);
+  }
+
   useFocusEffect(
     React.useCallback(() => {
       (async () => {
         try {
           const user = await getUserFromId(db, user_id);
 
-          const response = await fetch(`http://${API_URL}/api/v1/vault/@me`, {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${user.token}`,
-            },
-          });
+          const encryptionKey = NativeCrypto.getEncryptionKey();
+          console.log(encryptionKey)
+          if (encryptionKey !== "") {
+            console.log("Girdi23")
+            return
+          };
 
-          const data = await response.json();
-          console.log(data);
-
-          if (!response.ok) {
-            return;
-          }
-
-          const protectedSymmetricKey = `${data.data.mac}:${data.data.protected_symmetric_key}`;
-
-          const a = NativeCrypto.setEncryptionKey(
-            protectedSymmetricKey,
-            encryptionKeys
-          );
-          console.log(a);
-
+          await setEncryptionKey(user.token);
           setToken(user.token);
         } catch (error) {
           console.log(error);
@@ -97,59 +109,74 @@ const DashboardScreen = ({ route }) => {
     }, [])
   );
 
+  async function getPasswordsFromServer() {
+    const response = await fetch(
+      `http://${API_URL}/api/v1/vault/passwords`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return;
+    }
+
+    const encryptionKey = NativeCrypto.getEncryptionKey();
+
+    const decryptedData = data.data.map((item) => {
+      if (item.app_name && item.app_name != "") {
+        item.app_name = decrypt(item.app_name, encryptionKey);
+      }
+
+      if (item.username && item.username != "") {
+        item.username = decrypt(item.username, encryptionKey);
+      }
+
+      //uri ve şifreyide detaylarda göstermek için encrypt'e ekledim.
+      if (item.uri && item.uri != "") {
+        item.uri = decrypt(item.uri, encryptionKey);
+      }
+
+      if (item.encrypted_password) {
+        item.encrypted_password = decrypt(item.encrypted_password, encryptionKey);
+      }
+
+      return item;
+    });
+
+    return decryptedData;
+  }
+
   useFocusEffect(
     React.useCallback(() => {
       (async () => {
         try {
-          console.log(token);
-
           if (token === "") {
             return;
           }
 
-          const response = await fetch(
-            `http://${API_URL}/api/v1/vault/passwords`,
-            {
-              method: "GET",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
+          const vault = await getVault(db, user_id);
+          console.log(vault)
+          const vault_id = vault.id;
 
-          const data = await response.json();
-          console.log(data);
+          const passwords = await getPasswords(db, vault_id);
+          console.log(passwords)
 
-          if (!response.ok) {
+          if (passwords.length !== 0) {
+            console.log("Girdi")
+            setPasswords(passwords);
             return;
           }
 
-          const encryptionKey = NativeCrypto.getEncryptionKey();
-          console.log(encryptionKey);
+          const decryptedData = await getPasswordsFromServer();
 
-          const decryptedData = data.data.map((item) => {
-            if (item.app_name && item.app_name != "") {
-              item.app_name = decrypt(item.app_name, encryptionKey);
-            }
-
-            if (item.username && item.username != "") {
-              item.username = decrypt(item.username, encryptionKey);
-            }
-
-            //uri ve şifreyide detaylarda göstermek için encrypt'e ekledim.
-            if (item.uri && item.uri != "") {
-              item.uri = decrypt(item.uri, encryptionKey);
-            }
-
-            item.encrypted_password = decrypt(
-              item.encrypted_password,
-              encryptionKey
-            );
-
-            return item;
-          });
-
+          await dbSetPasswords(db, decryptedData)
           setPasswords(decryptedData);
         } catch (error) {
           console.log(error);
@@ -177,8 +204,23 @@ const DashboardScreen = ({ route }) => {
     });
   };
 
-  const deletePassword = (password) => {
+  const deletePassword = async (password) => {
     // handle delete on backend also
+
+    const response = await fetch(`http://${API_URL}/api/v1/vault/password/delete/${password.id}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      }
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.data.succeeded) {
+      return;
+    }
+
     const updatedPasswords = passwords.filter(
       (item) => item.id !== password.id
     );
@@ -219,7 +261,7 @@ const DashboardScreen = ({ route }) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({
           app_name: encrypted_title,
@@ -231,7 +273,6 @@ const DashboardScreen = ({ route }) => {
     );
 
     const data = await response.json();
-    console.log(data);
 
     if (!response.ok) {
       return;
