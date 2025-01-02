@@ -1,12 +1,40 @@
 import { useNavigation, useRoute } from "@react-navigation/native";
+import * as BackgroundFetch from "expo-background-fetch";
 import * as Clipboard from "expo-clipboard";
-import React from "react";
+import * as TaskManager from "expo-task-manager";
+import { atom, useAtom } from "jotai";
+import React, { useEffect } from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
 import { Button, Card, IconButton } from "react-native-paper";
+
+const BACKGROUND_FETCH_TASK = "delete-copy-password";
+export const globalPasswordAtom = atom(null);
+let globalPasswordValue = null;
+
+TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
+  try {
+    if (globalPasswordValue) {
+      await Clipboard.setStringAsync("");
+      console.log("Pano temizlendi.");
+    } else {
+      console.log("Global state boş, işlem yapılmadı.");
+    }
+
+    return BackgroundFetch.BackgroundFetchResult.NewData;
+  } catch (error) {
+    console.error("Arkaplan görevi hatası:", error);
+    return BackgroundFetch.BackgroundFetchResult.Failed;
+  }
+});
 
 const PasswordDetailsScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
+  const [globalPassword, setGlobalPassword] = useAtom(globalPasswordAtom);
+
+  useEffect(() => {
+    globalPasswordValue = globalPassword;
+  }, [globalPassword]);
 
   const { passwordDetails, onDelete } = route.params;
   const handleOnDelete = () => {
@@ -16,9 +44,24 @@ const PasswordDetailsScreen = () => {
   };
 
   const copyToClipboard = async () => {
-    await Clipboard.setStringAsync(passwordDetails.encrypted_password);
+    const password = passwordDetails.encrypted_password;
+    await Clipboard.setStringAsync(password);
+    setGlobalPassword(password);
     alert("Password copied to clipboard");
-    // Use Snackbar instead of alert later
+    registerBackgroundTask();
+  };
+
+  const registerBackgroundTask = async () => {
+    try {
+      await BackgroundFetch.registerTaskAsync(BACKGROUND_FETCH_TASK, {
+        minimumInterval: 30,
+        stopOnTerminate: false,
+        startOnBoot: true,
+      });
+      console.log("Arka plan görevi kaydedildi.");
+    } catch (error) {
+      console.error("Görev kaydı hatası:", error);
+    }
   };
 
   return (
