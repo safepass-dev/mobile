@@ -31,6 +31,13 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
 
 # typescript
 *.tsbuildinfo
+
+modules/native-crypto/android/build
+modules/native-crypto/ios/build
+
+/android
+/ios

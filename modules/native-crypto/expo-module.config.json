@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["NativeCryptoModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.nativecrypto.NativeCryptoModule"]
+  }
+}

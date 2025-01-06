@@ -1,27 +1,24 @@
-import { StyleSheet, Text, View } from 'react-native'
-import React from 'react'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import React, { FC, PropsWithChildren } from "react";
+import { StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-const Screen = ({children}) => {
+const Screen = ({ children }) => {
   return (
-   <SafeAreaView style={styles.safeAreaContainer}>
-     <View style={styles.container} >
-      {children}
-    </View>
-   </SafeAreaView>
-  )
-}
+    <SafeAreaView style={styles.safeAreaContainer}>
+      <View style={styles.container}>{children}</View>
+    </SafeAreaView>
+  );
+};
 
-export default Screen
+export default Screen;
 
 const styles = StyleSheet.create({
-    safeAreaContainer:{
-        backgroundColor: 'white',
-        flex: 1,
-    },
-    container:{
-        flex:1,
-        padding:16,
-    }
-
-})
+  safeAreaContainer: {
+    backgroundColor: "white",
+    flex: 1,
+  },
+  container: {
+    flex: 1,
+    padding: 16,
+  },
+});
