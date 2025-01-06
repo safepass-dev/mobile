@@ -2,14 +2,17 @@ import React, { useState } from "react";
 import { Image, StyleSheet, View } from "react-native";
 import { Card, IconButton, Menu, Text } from "react-native-paper";
 
-const PasswordCard = ({ item }) => {
+const PasswordCard = ({ item, onDelete, onEdit }) => {
   const [menuVisible, setMenuVisible] = useState(false);
   const openMenu = () => setMenuVisible(true);
   const closeMenu = () => setMenuVisible(false);
   return (
     <Card style={styles.card}>
       <Card.Content style={styles.content}>
-        <Image source={require("../../assets/global-network.png")} style={styles.icon} />
+        <Image
+          source={require("../../assets/global-network.png")}
+          style={styles.icon}
+        />
 
         <View style={styles.info}>
           <Text variant="bodyMedium" style={styles.name}>
@@ -60,25 +63,26 @@ const styles = StyleSheet.create({
   content: {
     flexDirection: "row",
     alignItems: "center",
+    columnGap: 20,
   },
   icon: {
-    width: 40,
-    height: 40,
+    width: 48,
+    height: 48,
     borderRadius: 20,
-    marginRight: 12,
   },
   info: {
     flex: 1,
     justifyContent: "center",
-    rowGap: 5
+    rowGap: 3,
   },
   name: {
-    fontWeight: "bold",
-    fontSize: 18,
+    fontFamily: "AfacadFlux-SemiBold",
+    fontSize: 20,
     color: "#333333",
   },
   email: {
-    fontSize: 12,
+    fontFamily: "AfacadFlux-Regular",
+    fontSize: 13,
     color: "#777777",
   },
   menuContainer: {

@@ -1,18 +1,19 @@
+import LoadingScreen from "@/components/loadingScreen";
+import { addUser } from "@/database/dbServices/usersDatabase";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import React, { useEffect, useState } from "react";
+import { useSQLiteContext } from "expo-sqlite";
+import React, { useState } from "react";
 import { Image, StyleSheet, View } from "react-native";
 import { Button, PaperProvider, Text, TextInput } from "react-native-paper";
 import config from "../../../config.json";
 import NativeCrypto from "../../../modules/native-crypto";
 import CustomModal from "../../components/customModal";
-import { addUser } from "@/database/dbServices/useDatabase";
-import { useSQLiteContext } from "expo-sqlite";
-import LoadingScreen from "@/components/loadingScreen";
 
 const API_URL = config.API_URL;
 
 const LoginScreen = () => {
   const navigation = useNavigation();
+  const [showPassword, setShowPassword] = useState(false);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,6 +28,10 @@ const LoginScreen = () => {
   const [modalMessage, setModalMessage] = useState("default");
 
   const db = useSQLiteContext();
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
 
   const showSuccess = (message) => {
     setModalType("success");
@@ -70,8 +75,8 @@ const LoginScreen = () => {
 
     // Giriş başarılı. Ekrana bildirim basıp token ve user id local db'ye kayıt edilecek.
     await addUser(db, user_id, token);
-    
-    navigation.navigate("Dashboard", { user_id });
+
+    navigation.navigate("Dashboard", { user_id, encryptionKeys });
   };
 
   const listener = ({ value: result }) => {
@@ -92,24 +97,24 @@ const LoginScreen = () => {
     React.useCallback(() => {
       if (isFirst) {
         setIsFirst(false);
-        return
+        return;
       }
 
       if (encryptedKeyData === "") {
         // Şifreleme sırasında bir hata var. Ekrana hata bildirimi basılacak.
         // Burası login ekranına girildiği gibi tetikleniyor ve modal gösteriliyor.
         showError("Şifreleme sırasında bir hata var!");
-  
+
         return;
       }
-  
+
       console.log(encryptedKeyData);
-  
+
       const data = JSON.parse(encryptedKeyData);
-  
+
       const masterPasswordHash = data.masterPasswordHash;
       const encryptionKeys = data.encryptionKeys;
-  
+
       if (
         masterPasswordHash === "" ||
         masterPasswordHash === null ||
@@ -120,7 +125,7 @@ const LoginScreen = () => {
         showError("Şifreleme sırasında bir hata var.!");
         return;
       }
-  
+
       sendLoginRequest(masterPasswordHash, encryptionKeys);
     }, [encryptedKeyData])
   );
@@ -162,12 +167,17 @@ const LoginScreen = () => {
           mode="outlined"
           label="Password"
           placeholder="Enter your password"
-          secureTextEntry
+          secureTextEntry={!showPassword}
           value={password}
           onChangeText={setPassword}
           style={styles.input}
           left={<TextInput.Icon icon="lock" />}
-          right={<TextInput.Icon icon="eye-off" />}
+          right={
+            <TextInput.Icon
+              icon={showPassword ? "eye" : "eye-off"}
+              onPress={() => setShowPassword(!showPassword)}
+            />
+          }
         />
 
         {/* Şifre Unutma */}

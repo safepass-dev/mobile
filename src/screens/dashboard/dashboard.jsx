@@ -1,15 +1,24 @@
-import React, { useState } from "react";
-import { FlatList, StyleSheet, Text, TextInput, View } from "react-native";
+import CustomModal from "@/components/customModal";
+import { getUserFromId } from "@/database/dbServices/usersDatabase";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useSQLiteContext } from "expo-sqlite";
+import React, { useEffect, useState } from "react";
+import {
+  DeviceEventEmitter,
+  FlatList,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { Appbar, Button, PaperProvider } from "react-native-paper";
+import config from "../../../config.json";
+import NativeCrypto from "../../../modules/native-crypto";
 import PasswordCard from "../../components/passwordCard";
 import AddPasswordModal from "../../components/passwordModal";
-import { useSQLiteContext } from "expo-sqlite";
-import { getUserFromId } from "@/database/dbServices/useDatabase";
-import config from "../../../config.json";
-import { useFocusEffect } from "@react-navigation/native";
-import CustomModal from "@/components/customModal";
-import NativeCrypto from "../../../modules/native-crypto";
-import LoadingScreen from "@/components/loadingScreen";
+import { getPasswords, dbSetPassword, dbSetPasswords, deletePassword, deletePasswords, getPassword } from "@/database/dbServices/passwordsDatabase";
+import { deleteVault, getVault, setVault } from "@/database/dbServices/vaultsDatabase";
 
 const API_URL = config.API_URL;
 
@@ -22,6 +31,19 @@ const DashboardScreen = ({ route }) => {
   const [modalType, setModalType] = useState("success");
   const [modalMessage, setModalMessage] = useState("default");
 
+  const navigation = useNavigation();
+
+  useEffect(() => {
+    const listener = DeviceEventEmitter.addListener("ScreenTurnedOff", () => {
+      console.log("Screen turned off!");
+      // Hesaptan çıkış işlemleri burada yapılabilir
+    });
+
+    return () => {
+      listener.remove(); // Bileşen temizlenirken dinleyiciyi kaldırın
+    };
+  }, []);
+
   const showSuccess = (message) => {
     setModalType("success");
     setModalMessage(message);
@@ -32,73 +54,136 @@ const DashboardScreen = ({ route }) => {
 
   const db = useSQLiteContext();
 
-  const { user_id } = route.params;
+  const { user_id, encryptionKeys } = route.params;
 
   const filteredPasswords = passwords.filter(
     (item) =>
       item.app_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.username.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  
+
+  async function setEncryptionKey(token) {
+    const response = await fetch(`http://${API_URL}/api/v1/vault/@me`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return;
+    }
+
+    const protectedSymmetricKey = `${data.data.mac}:${data.data.protected_symmetric_key}`;
+
+    const a = NativeCrypto.setEncryptionKey(
+      protectedSymmetricKey,
+      encryptionKeys
+    );
+
+    await setVault(db, data.data);
+  }
+
   useFocusEffect(
     React.useCallback(() => {
       (async () => {
         try {
           const user = await getUserFromId(db, user_id);
+
+          const encryptionKey = NativeCrypto.getEncryptionKey();
+          console.log(encryptionKey)
+          if (encryptionKey !== "") {
+            console.log("Girdi23")
+            return
+          };
+
+          await setEncryptionKey(user.token);
           setToken(user.token);
         } catch (error) {
-          console.log(error)
+          console.log(error);
         }
       })();
     }, [])
-  )
+  );
+
+  async function getPasswordsFromServer() {
+    const response = await fetch(
+      `http://${API_URL}/api/v1/vault/passwords`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return;
+    }
+
+    const encryptionKey = NativeCrypto.getEncryptionKey();
+
+    const decryptedData = data.data.map((item) => {
+      if (item.app_name && item.app_name != "") {
+        item.app_name = decrypt(item.app_name, encryptionKey);
+      }
+
+      if (item.username && item.username != "") {
+        item.username = decrypt(item.username, encryptionKey);
+      }
+
+      //uri ve şifreyide detaylarda göstermek için encrypt'e ekledim.
+      if (item.uri && item.uri != "") {
+        item.uri = decrypt(item.uri, encryptionKey);
+      }
+
+      if (item.encrypted_password) {
+        item.encrypted_password = decrypt(item.encrypted_password, encryptionKey);
+      }
+
+      return item;
+    });
+
+    return decryptedData;
+  }
 
   useFocusEffect(
     React.useCallback(() => {
       (async () => {
         try {
-          console.log(token)
-
           if (token === "") {
             return;
           }
 
-          const response = await fetch(`http://${API_URL}/api/v1/vault/passwords`, {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${token}`
-            }
-          });
-  
-          const data = await response.json();
-          console.log(data)
-          
-          if (!response.ok) {
+          const vault = await getVault(db, user_id);
+          console.log(vault)
+          const vault_id = vault.id;
+
+          const passwords = await getPasswords(db, vault_id);
+          console.log(passwords)
+
+          if (passwords.length !== 0) {
+            console.log("Girdi")
+            setPasswords(passwords);
             return;
           }
 
-          const encryptionKey = NativeCrypto.getEncryptionKey();
+          const decryptedData = await getPasswordsFromServer();
 
-          const decryptedData = data.data.map(item => {
-            if (item.app_name && item.app_name != "") {
-              item.app_name = decrypt(item.app_name, encryptionKey);
-            }
-
-            if (item.username && item.username != "") {
-              item.username = decrypt(item.username, encryptionKey);
-            }
-
-            return item;
-          });
-
+          await dbSetPasswords(db, decryptedData)
           setPasswords(decryptedData);
         } catch (error) {
-          console.log(error)
+          console.log(error);
         }
       })();
     }, [token])
-  )
+  );
 
   function encrypt(data, encryptionKey) {
     const encryptedData = NativeCrypto.encryptWithChaCha20(data, encryptionKey);
@@ -112,36 +197,101 @@ const DashboardScreen = ({ route }) => {
     return decryptedData;
   }
 
+  const navigateToPasswordDetails = (password) => {
+    navigation.navigate("PasswordDetails", {
+      passwordDetails: password,
+      onDelete: () => deletePassword(password),
+    });
+  };
+
+  const deletePassword = async (password) => {
+    // handle delete on backend also
+
+    const response = await fetch(`http://${API_URL}/api/v1/vault/password/delete/${password.id}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      }
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.data.succeeded) {
+      return;
+    }
+
+    const updatedPasswords = passwords.filter(
+      (item) => item.id !== password.id
+    );
+    setPasswords(updatedPasswords);
+    showSuccess("Password successfully deleted");
+  };
+
+  const filteredPasswordsRenderItem = ({ item }) => {
+    const handleOnPress = () => navigateToPasswordDetails(item);
+    const handlePasswordDelete = () => deletePassword(item);
+    return (
+      <TouchableOpacity onPress={handleOnPress}>
+        <PasswordCard
+          onEdit={handleOnPress}
+          onDelete={handlePasswordDelete}
+          item={item}
+        />
+      </TouchableOpacity>
+    );
+  };
+
   const addNewPassword = async (newPassword) => {
     const encryptionKey = NativeCrypto.getEncryptionKey();
 
     const encrypted_password = encrypt(newPassword.password, encryptionKey);
-    const encrypted_title = newPassword.title != "" ? encrypt(newPassword.title, encryptionKey) : "";
-    const encrypted_uri = newPassword.uri != "" ? encrypt(newPassword.uri, encryptionKey) : "";
-    const encrypted_username = newPassword.username != "" ? encrypt(newPassword.username, encryptionKey) : "";
+    const encrypted_title =
+      newPassword.title != "" ? encrypt(newPassword.title, encryptionKey) : "";
+    const encrypted_uri =
+      newPassword.uri != "" ? encrypt(newPassword.uri, encryptionKey) : "";
+    const encrypted_username =
+      newPassword.username != ""
+        ? encrypt(newPassword.username, encryptionKey)
+        : "";
 
-    const response = await fetch(`http://${API_URL}/api/v1/vault/password/create`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        app_name: encrypted_title,
-        uri: encrypted_uri,
-        username: encrypted_username,
-        encrypted_password: encrypted_password
-      })
-    });
+    const response = await fetch(
+      `http://${API_URL}/api/v1/vault/password/create`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          app_name: encrypted_title,
+          uri: encrypted_uri,
+          username: encrypted_username,
+          encrypted_password: encrypted_password,
+        }),
+      }
+    );
 
     const data = await response.json();
-    console.log(data);
 
     if (!response.ok) {
       return;
     }
 
-    setPasswords((prevItems) => [...prevItems, data.data])
+    //uri ve şifreyide detaylarda göstermek için encrypt'e ekledim.
+    const keysToDecrypt = ["app_name", "username", "uri", "encrypted_password"];
+    const decryptedData = {};
+    for (const [keyName, encryptedValue] of Object.entries(data.data)) {
+      var newValue = encryptedValue;
+
+      if (keysToDecrypt.includes(keyName)) {
+        newValue = decrypt(encryptedValue, encryptionKey);
+      }
+
+      decryptedData[keyName] = newValue;
+    }
+
+    setPasswords((prevItems) => [...prevItems, decryptedData]);
     showSuccess("Password successfully added");
 
     setModalVisible(false);
@@ -173,7 +323,7 @@ const DashboardScreen = ({ route }) => {
 
         <FlatList
           data={filteredPasswords}
-          renderItem={({ item }) => <PasswordCard item={item} />}
+          renderItem={filteredPasswordsRenderItem}
           keyExtractor={(item) => item.id}
         />
 
@@ -193,7 +343,9 @@ const DashboardScreen = ({ route }) => {
       <CustomModal
         visible={infoModalVisible}
         message={modalMessage}
-        onDismiss={() => { setInfoModalVisible(false) }}
+        onDismiss={() => {
+          setInfoModalVisible(false);
+        }}
         type={modalType}
       />
 
@@ -211,7 +363,7 @@ const styles = StyleSheet.create({
   contentTitleText: {
     fontSize: 24,
     fontWeight: "bold",
-    fontFamily: "sans-serif",
+    fontFamily: "AfacadFlux-Black",
   },
   searchBar: {
     margin: 16,
@@ -220,8 +372,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   sectionHeader: {
-    fontSize: 24,
-    fontWeight: "bold",
+    fontFamily: "AfacadFlux-Black",
+    fontSize: 32,
     marginLeft: 16,
     marginBottom: 16,
   },
