@@ -1,4 +1,4 @@
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import React from "react";
 import { Image, PermissionsAndroid, StyleSheet, View } from "react-native";
 import { Button, Text } from "react-native-paper";
@@ -9,6 +9,7 @@ const HomeScreen = () => {
   const [isConnected, setIsConnected] = React.useState(false);
   const [wifiList, setWifiList] = React.useState([]);
   const [currentSSID, setCurrentSSID] = React.useState("");
+  
   const requestLocationPermission = async () => {
     try {
       const granted = await PermissionsAndroid.request(
@@ -45,6 +46,7 @@ const HomeScreen = () => {
     }
 
     try {
+      console.log(WifiManager)
       const currentSSID = await WifiManager.getCurrentWifiSSID();
       setCurrentSSID(currentSSID);
       const wifiList = await WifiManager.loadWifiList();
@@ -79,10 +81,17 @@ const HomeScreen = () => {
     }
   };
 
-  React.useEffect(() => {
-    enabled();
-    getWifiDetails();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      (async () => {
+        const granted = await requestLocationPermission();
+        if (!granted) return;
+
+        await enabled();
+        await getWifiDetails();
+      })();
+    }, [])
+  )
 
   const navigation = useNavigation();
 

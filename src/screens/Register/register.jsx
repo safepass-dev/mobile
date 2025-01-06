@@ -6,6 +6,7 @@ import config from "../../../config.json";
 import NativeCrypto from "../../../modules/native-crypto";
 import CustomModal from "../../components/customModal";
 import Screen from "../../components/screen";
+import LoadingScreen from "@/components/loadingScreen";
 
 const API_URL = config.API_URL;
 
@@ -223,6 +224,8 @@ const RegisterScreen = () => {
           />
         </View>
       </Screen>
+
+      <LoadingScreen text={"CREATING ACCOUNT"} visible={loading} />
     </PaperProvider>
   );
 };

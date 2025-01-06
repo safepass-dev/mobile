@@ -2,7 +2,7 @@ import { getLoadedFonts } from 'expo-font';
 import React, { useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, Modal, Animated, Easing, Image } from 'react-native';
 
-const LoadingScreen = ({ visible }) => {
+const LoadingScreen = ({ visible, text }) => {
   const rotation = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -39,7 +39,7 @@ const LoadingScreen = ({ visible }) => {
           source={require('../../assets/vault (1).png')}
           style={[styles.image, { transform: [{ rotate: rotateInterpolate }] }]}
         />
-        <Text style={styles.text}>UNLOCKING THE VAULT</Text>
+        <Text style={styles.text}>{text}</Text>
       </View>
     </Modal>
   );

@@ -143,6 +143,8 @@ const DashboardScreen = ({ route }) => {
       await db.execAsync("DELETE FROM vaults");
       await db.execAsync("DELETE FROM passwords");
 
+      NativeCrypto.removeEncryptionKey();
+
       navigation.dispatch(
         CommonActions.reset({
           index: 0,

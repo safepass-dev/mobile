@@ -8,6 +8,7 @@ declare class NativeCryptoModule extends NativeModule<NativeCryptoModuleEvents> 
   createMph(password: string, email: string): void;
   getEncryptionKey(): string;
   setEncryptionKey(psk: string, keys: string): string;
+  removeEncryptionKey(): boolean;
   encryptWithChaCha20(data: string, key: string): string;
   decryptWithChaCha20(data: string, key: string): string;
   setValueAsync(value: string): Promise<void>;

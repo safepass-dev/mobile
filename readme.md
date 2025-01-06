@@ -51,18 +51,15 @@ SafePass is a secure password manager application built with React Native. It pr
    ```
 
 2. Install dependencies:
+
+   ```sh
    npm install
+   ```
 
-# or
+3. Run the app
 
-yarn install 3. Start the development server:
-npm start
+   **currently only works on android devices**
 
-# or
-
-yarn start 4. Run the application on your emulator or device:
-npm run android
-
-# or
-
-npm run ios
+   ```sh
+   npx expo run:android
+   ```

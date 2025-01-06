@@ -57,6 +57,16 @@ class NativeCryptoModule : Module() {
             return@Function saveEncryptionKeyFun(psk, keys);
         }
 
+        Function("removeEncryptionKey") {
+            val preferences = getPreferences();
+            val editor = preferences.edit();
+            editor.remove("encryptionKey");
+
+            val isCleared = editor.commit();
+            
+            return@Function isCleared;
+        }
+
         Function("encryptWithChaCha20") { data: String, key: String ->
             return@Function encryptChaCha20(data, key);
         }

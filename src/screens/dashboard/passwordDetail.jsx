@@ -14,7 +14,8 @@ let globalPasswordValue = null;
 TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
   try {
     if (globalPasswordValue) {
-      await Clipboard.setStringAsync("");
+      const result = await Clipboard.setStringAsync("");
+      console.log(result);
       console.log("Pano temizlendi.");
     } else {
       console.log("Global state boş, işlem yapılmadı.");

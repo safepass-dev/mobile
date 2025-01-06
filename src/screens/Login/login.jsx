@@ -126,7 +126,12 @@ const LoginScreen = () => {
         return;
       }
 
-      sendLoginRequest(masterPasswordHash, encryptionKeys);
+      try {
+        sendLoginRequest(masterPasswordHash, encryptionKeys);
+      } catch (error) {
+        setLoading(false);
+        showError("Bir hata oluştu. Lütfen tekrar deneyin.");
+      }
     }, [encryptedKeyData])
   );
 
@@ -212,7 +217,7 @@ const LoginScreen = () => {
         <Button onPress={() => showSuccess("DENEME")}>ShowModal</Button>
       </View>
 
-      <LoadingScreen visible={loading} />
+      <LoadingScreen text={"UNLOCKING THE VAULT"} visible={loading} />
     </PaperProvider>
   );
 };

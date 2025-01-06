@@ -2,8 +2,10 @@ import { ExpoConfig } from "expo/config";
 import "ts-node/register"; // Add this to import TypeScript files
 
 const config: ExpoConfig = {
+  icon: "./assets/safepass-logo.png",
   plugins: [
-    "expo-font"
+    "expo-font",
+    "react-native-wifi-reborn"
   ],
   android: {
     package: "com.anonymous.safepass",
@@ -11,7 +13,7 @@ const config: ExpoConfig = {
   ios: {
     bundleIdentifier: "com.anonymous.safepass",
   },
-  name: "safepass",
+  name: "SafePass",
   slug: "safepass",
 };
 
