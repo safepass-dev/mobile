@@ -1,6 +1,15 @@
 import CustomModal from "@/components/customModal";
+import {
+  dbSetPasswords,
+  getPasswords,
+} from "@/database/dbServices/passwordsDatabase";
 import { getUserFromId } from "@/database/dbServices/usersDatabase";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { getVault, setVault } from "@/database/dbServices/vaultsDatabase";
+import {
+  CommonActions,
+  useFocusEffect,
+  useNavigation,
+} from "@react-navigation/native";
 import { useSQLiteContext } from "expo-sqlite";
 import React, { useEffect, useState } from "react";
 import {
@@ -12,13 +21,18 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Appbar, Button, PaperProvider } from "react-native-paper";
+import {
+  Appbar,
+  Button,
+  Dialog,
+  PaperProvider,
+  Paragraph,
+  Portal,
+} from "react-native-paper";
 import config from "../../../config.json";
 import NativeCrypto from "../../../modules/native-crypto";
 import PasswordCard from "../../components/passwordCard";
 import AddPasswordModal from "../../components/passwordModal";
-import { getPasswords, dbSetPassword, dbSetPasswords, deletePassword, deletePasswords, getPassword } from "@/database/dbServices/passwordsDatabase";
-import { deleteVault, getVault, setVault } from "@/database/dbServices/vaultsDatabase";
 
 const API_URL = config.API_URL;
 
@@ -26,10 +40,11 @@ const DashboardScreen = ({ route }) => {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [modalVisible, setModalVisible] = React.useState(false);
   const [passwords, setPasswords] = React.useState([]);
-
+  const [token, setToken] = useState("");
   const [infoModalVisible, setInfoModalVisible] = useState(false);
   const [modalType, setModalType] = useState("success");
   const [modalMessage, setModalMessage] = useState("default");
+  const [logoutDialogVisible, setLogoutDialogVisible] = useState(false);
 
   const navigation = useNavigation();
 
@@ -37,6 +52,7 @@ const DashboardScreen = ({ route }) => {
     const listener = DeviceEventEmitter.addListener("ScreenTurnedOff", () => {
       console.log("Screen turned off!");
       // Hesaptan çıkış işlemleri burada yapılabilir
+      logout();
     });
 
     return () => {
@@ -44,13 +60,65 @@ const DashboardScreen = ({ route }) => {
     };
   }, []);
 
+  useFocusEffect(
+    React.useCallback(() => {
+      (async () => {
+        try {
+          const user = await getUserFromId(db, user_id);
+
+          const encryptionKey = NativeCrypto.getEncryptionKey();
+          console.log(encryptionKey);
+          if (encryptionKey !== "") {
+            console.log("Girdi23");
+            return;
+          }
+
+          await setEncryptionKey(user.token);
+          setToken(user.token);
+        } catch (error) {
+          console.log(error);
+        }
+      })();
+    }, [])
+  );
+
+  useFocusEffect(
+    React.useCallback(() => {
+      (async () => {
+        try {
+          if (token === "") {
+            return;
+          }
+
+          const vault = await getVault(db, user_id);
+          console.log(vault);
+          const vault_id = vault.id;
+
+          const passwords = await getPasswords(db, vault_id);
+          console.log(passwords);
+
+          if (passwords.length !== 0) {
+            console.log("Girdi");
+            setPasswords(passwords);
+            return;
+          }
+
+          const decryptedData = await getPasswordsFromServer();
+
+          await dbSetPasswords(db, decryptedData);
+          setPasswords(decryptedData);
+        } catch (error) {
+          console.log(error);
+        }
+      })();
+    }, [token])
+  );
+
   const showSuccess = (message) => {
     setModalType("success");
     setModalMessage(message);
     setInfoModalVisible(true);
   };
-
-  const [token, setToken] = useState("");
 
   const db = useSQLiteContext();
 
@@ -62,12 +130,42 @@ const DashboardScreen = ({ route }) => {
       item.username.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const showDiolog = () => {
+    setLogoutDialogVisible(true);
+  };
+  const hideDialog = () => {
+    setLogoutDialogVisible(false);
+  };
+
+  const logout = async () => {
+    try {
+      await db.execAsync("DELETE FROM users");
+      await db.execAsync("DELETE FROM vaults");
+      await db.execAsync("DELETE FROM passwords");
+
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: "Login" }],
+        })
+      );
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setLogoutDialogVisible(false);
+    }
+  };
+
+  const confirmLogout = () => {
+    setLogoutDialogVisible(true);
+  };
+
   async function setEncryptionKey(token) {
     const response = await fetch(`http://${API_URL}/api/v1/vault/@me`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
     });
 
@@ -87,39 +185,14 @@ const DashboardScreen = ({ route }) => {
     await setVault(db, data.data);
   }
 
-  useFocusEffect(
-    React.useCallback(() => {
-      (async () => {
-        try {
-          const user = await getUserFromId(db, user_id);
-
-          const encryptionKey = NativeCrypto.getEncryptionKey();
-          console.log(encryptionKey)
-          if (encryptionKey !== "") {
-            console.log("Girdi23")
-            return
-          };
-
-          await setEncryptionKey(user.token);
-          setToken(user.token);
-        } catch (error) {
-          console.log(error);
-        }
-      })();
-    }, [])
-  );
-
   async function getPasswordsFromServer() {
-    const response = await fetch(
-      `http://${API_URL}/api/v1/vault/passwords`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    const response = await fetch(`http://${API_URL}/api/v1/vault/passwords`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
     const data = await response.json();
 
@@ -144,7 +217,10 @@ const DashboardScreen = ({ route }) => {
       }
 
       if (item.encrypted_password) {
-        item.encrypted_password = decrypt(item.encrypted_password, encryptionKey);
+        item.encrypted_password = decrypt(
+          item.encrypted_password,
+          encryptionKey
+        );
       }
 
       return item;
@@ -152,38 +228,6 @@ const DashboardScreen = ({ route }) => {
 
     return decryptedData;
   }
-
-  useFocusEffect(
-    React.useCallback(() => {
-      (async () => {
-        try {
-          if (token === "") {
-            return;
-          }
-
-          const vault = await getVault(db, user_id);
-          console.log(vault)
-          const vault_id = vault.id;
-
-          const passwords = await getPasswords(db, vault_id);
-          console.log(passwords)
-
-          if (passwords.length !== 0) {
-            console.log("Girdi")
-            setPasswords(passwords);
-            return;
-          }
-
-          const decryptedData = await getPasswordsFromServer();
-
-          await dbSetPasswords(db, decryptedData)
-          setPasswords(decryptedData);
-        } catch (error) {
-          console.log(error);
-        }
-      })();
-    }, [token])
-  );
 
   function encrypt(data, encryptionKey) {
     const encryptedData = NativeCrypto.encryptWithChaCha20(data, encryptionKey);
@@ -207,13 +251,16 @@ const DashboardScreen = ({ route }) => {
   const deletePassword = async (password) => {
     // handle delete on backend also
 
-    const response = await fetch(`http://${API_URL}/api/v1/vault/password/delete/${password.id}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
+    const response = await fetch(
+      `http://${API_URL}/api/v1/vault/password/delete/${password.id}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
       }
-    });
+    );
 
     const data = await response.json();
 
@@ -261,7 +308,7 @@ const DashboardScreen = ({ route }) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           app_name: encrypted_title,
@@ -354,6 +401,23 @@ const DashboardScreen = ({ route }) => {
         onClose={() => setModalVisible(false)}
         onAdd={addNewPassword}
       />
+      <Button onPress={confirmLogout}>LogOut</Button>
+
+      <Portal>
+        <Dialog visible={logoutDialogVisible} onDismiss={hideDialog}>
+          <Dialog.Title>Çıkış Yap</Dialog.Title>
+          <Dialog.Content>
+            <Paragraph>
+              Hesabınızdan çıkış yapmak ve tüm yerel verilerinizi silmek
+              istediğinize emin misiniz?
+            </Paragraph>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={logout}>Çıkış Yap</Button>
+            <Button onPress={hideDialog}>İptal</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </PaperProvider>
   );
 };
