@@ -60,6 +60,8 @@ Welcome to **Safepass**, a comprehensive and user-friendly mobile application de
    npm install
    ```
 3. Run the application:
+   **currently only works on android devices**
+   
    - For Android:
      ```bash
      npx expo run:android
