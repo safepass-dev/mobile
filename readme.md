@@ -14,7 +14,7 @@ Welcome to **Safepass**, a comprehensive and user-friendly mobile application de
 
 ### 2. **User Interface**
 
-- Built using **React Native**, providing a seamless and responsive user experience across both Android and iOS platforms.
+- Built using **React Native** and **React Native Paper UI Library** providing a seamless and responsive user experience across both Android and iOS platforms.
 - Elegant and intuitive UI for effortless navigation and interaction.
 
 ### 3. **Background Processing**
@@ -84,8 +84,6 @@ Welcome to **Safepass**, a comprehensive and user-friendly mobile application de
 ---
 
 ## Support
-
-For questions or issues, please contact our support team at **support@safepass.com** or open an issue on GitHub.
 
 ---
 
