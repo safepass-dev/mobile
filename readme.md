@@ -1,68 +1,91 @@
-# SafePass
+# Safepass Mobile Application
 
-SafePass is a secure password manager application built with React Native. It provides a user-friendly interface for managing passwords and ensures the security of user data through various features.
+Welcome to **Safepass**, a comprehensive and user-friendly mobile application designed to enhance your digital security. This application provides a robust platform for securely managing sensitive information, leveraging advanced features like motion sensors, secure storage, and network monitoring. Below, you'll find an overview of the application's core functionalities and technical design.
 
-## Features
+## Features Overview
 
-1. **Storage / Basic Data**:
+### 1. **Secure Storage**
 
-   - Uses `SharedPreferences` to securely store the user's secret key.
+- **Basic Data Storage**: Utilizes `SharedPreferences` (on Android) to store sensitive data such as the user's secret key securely.
+- **Local Database**:
+  - Uses `Room` for Android and `CoreData` or `Document` storage for iOS.
+  - Securely saves user credentials, including JWT tokens and user information, ensuring easy and safe access to user data after login.
 
-2. **Local Database**:
+### 2. **User Interface**
 
-   - Stores JWT token and user information locally after login using SQLite.
+- Built using **React Native**, providing a seamless and responsive user experience across both Android and iOS platforms.
+- Elegant and intuitive UI for effortless navigation and interaction.
 
-3. **UI**:
+### 3. **Background Processing**
 
-   - Provides a user interface for users using React Native.
+- Implements a **Clipboard Timer**: Monitors clipboard content and automatically clears copied passwords after a predefined duration, preventing unintentional exposure of sensitive data.
 
-4. **Background Process / Task**:
+### 4. **Event Handling**
 
-   - Implements a background timer to clear the clipboard after a password is copied to it.
+- **Session Termination on Shutdown**:
+  - Leverages **Broadcast Receivers** (Android) and **NSNotificationCenter** (iOS) to detect when the device is shutting down, ensuring the user's session is securely terminated.
 
-5. **Broadcast Receiver / NSNotificationCenter**:
+### 5. **Sensor Integration**
 
-   - Logs out the user when the phone is turned off.
+- Integrates with the **Motion Sensor** to monitor the device's movement:
+  - If the device experiences rapid motion (e.g., being shaken), the app detects the activity and automatically logs out the user to prevent unauthorized access.
 
-6. **Sensor (Motion / Location / Environment)**:
+### 6. **Connectivity Monitoring**
 
-   - Ends the session if the phone is moving rapidly while the app is open.
+- Actively checks the device's **WiFi connectivity**:
+  - Alerts the user if the device is connected to an unsecured or public WiFi network, emphasizing potential security risks.
 
-7. **Connectivity (BLE / Wifi / Cellular Network / USB / NFC)**:
-   - Alerts the user if connected to a public or unsecured WiFi network.
+---
 
-## Getting Started
+---
+
+## Installation
 
 ### Prerequisites
 
-- Node.js
-- npm or yarn
-- React Native CLI
-- Android Studio / Xcode
+- Node.js and npm/yarn
+- Expo CLI
+- Android Studio / Xcode for native builds
 
-### Installation
+### Steps
 
 1. Clone the repository:
-
-   ```sh
-   git clone https://github.com/yourusername/safepass.git
-   cd safepass
-
+   ```bash
+   git clone https://github.com/safepass-dev/mobile.git
    ```
-
 2. Install dependencies:
+   ```bash
+   cd mobile
    npm install
+   ```
+3. Run the application:
+   - For Android:
+     ```bash
+     npx expo run:android
+     ```
+   - For iOS:
+     ```bash
+     npx expo run:ios
+     ```
 
-# or
+---
 
-yarn install 3. Start the development server:
-npm start
+## Usage
 
-# or
+1. Launch the application.
+2. Log in with your credentials.
+3. Manage your sensitive data securely using the vault interface.
+4. Monitor clipboard content and WiFi network status.
+5. Stay protected with automatic logout features triggered by device motion or shutdown events.
 
-yarn start 4. Run the application on your emulator or device:
-npm run android
+---
 
-# or
+---
 
-npm run ios
+## Support
+
+For questions or issues, please contact our support team at **support@safepass.com** or open an issue on GitHub.
+
+---
+
+Thank you for choosing Safe for your digital security needs!
