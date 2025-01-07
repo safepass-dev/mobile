@@ -2,6 +2,8 @@
 
 SafePass is a secure password manager application built with React Native. It provides a user-friendly interface for managing passwords and ensures the security of user data through various features.
 
+Video url: [Google Drive](https://drive.google.com/file/d/1ivcxajOAKl2XzJ6nKFHUZVWLGQKpImji/view?usp=sharing)
+
 ## Features
 
 1. **Storage / Basic Data**:
